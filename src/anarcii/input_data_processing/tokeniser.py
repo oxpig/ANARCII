@@ -1,4 +1,7 @@
+from collections.abc import Iterable
+
 import numpy as np
+from numpy.typing import NDArray
 
 non_standard_aa = set("BOJUZ")
 
@@ -12,7 +15,7 @@ class Tokeniser:
             for char in non_standard_aa:
                 self.char_to_int[char] = self.char_to_int["X"]
 
-    def encode(self, sequence: list[str]):
+    def encode(self, sequence: Iterable[str]) -> NDArray[np.int32]:
         # Replace non-standard amino acids with 'X'
         standardised_sequence: list[int] = [self.char_to_int[char] for char in sequence]
         return np.array(standardised_sequence, np.int32)

@@ -2,6 +2,8 @@ import re
 
 import torch
 
+from anarcii.input_data_processing.tokeniser import Tokeniser
+
 from .utils import pick_window, split_seq
 
 # from anarcii.pipeline.anarcii_constants import n_jump
@@ -56,7 +58,13 @@ class SequenceProcessor:
 
     """
 
-    def __init__(self, seqs, model, window_model, verbose):
+    def __init__(
+        self,
+        seqs: dict[str, str],
+        model: torch.nn.Module,
+        window_model: torch.nn.Module,
+        verbose: bool,
+    ):
         """
         Args:
             seqs (dict): A dictionary, keys are sequence IDs and values are sequences.
@@ -66,11 +74,11 @@ class SequenceProcessor:
             score for the input window (sequence fragment).
             verbose (bool): Whether to print detailed logs.
         """
-        self.seqs = seqs
-        self.model = model
-        self.window_model = window_model
-        self.verbose = verbose
-        self.offsets = {}
+        self.seqs: dict[str, str] = seqs
+        self.model: torch.nn.Module = model
+        self.window_model: torch.nn.Module = window_model
+        self.verbose: bool = verbose
+        self.offsets: dict[str, int] = {}
 
     def process_sequences(self):
         # Step 1: Handle long sequences
@@ -143,7 +151,7 @@ class SequenceProcessor:
         self.seqs = sorted(self.seqs, key=lambda x: len(x[2]))
 
     def _tokenize_sequences(self):
-        aa = self.model.sequence_tokeniser
+        aa: Tokeniser = self.model.sequence_tokeniser
         tokenized_seqs = []
 
         for seq in self.seqs:
