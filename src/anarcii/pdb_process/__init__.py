@@ -1,4 +1,4 @@
-from .utils import ATOM_RECORDS, THREE_TO_ONE, count_repeated_sequences
+from .utils import ATOM_RECORDS, THREE_TO_ONE, find_repeated_sequences
 
 
 def renumber_pdb_with_anarcii(
@@ -60,8 +60,9 @@ def renumber_pdb_with_anarcii(
             sequence = "".join([res[1] for res in sequence_info])
 
             # # check for repeats and take the first 190
-            if count_repeated_sequences(sequence, k=190) > 1:
+            if find_repeated_sequences(sequence):
                 print("Repeated seq of 190 residues found.")
+                # TODO: Use actual repeated subseq and offset, not arbitrary 190.
                 sequence = sequence[:190]
 
             seq = [(chain_id, sequence)]

@@ -1,6 +1,8 @@
-__all__ = ["ATOM_RECORDS", "THREE_TO_ONE", "count_repeated_sequences"]
+__all__ = ["ATOM_RECORDS", "THREE_TO_ONE", "find_repeated_sequences", "repeat_pattern"]
 
 # Constants
+import re
+
 ATOM_RECORDS = "ATOM"
 THREE_TO_ONE = {
     "ALA": "A",
@@ -25,30 +27,22 @@ THREE_TO_ONE = {
     "TYR": "Y",
 }
 
+# Minimum sequence length for detecting a repeat.
+MIN_SEQUENCE_LENGTH = 50
 
-def count_repeated_sequences(sequence, k=200):
+# Pattern for detecting repeated sequences of 50 or more residues.
+repeat_pattern = re.compile(rf"(.{{{MIN_SEQUENCE_LENGTH},}})(?=.*?\1)")
+
+
+def find_repeated_sequences(sequence):
     """
-    Counts the number of repeated subsequences of length k in the given sequence.
+    Counts the number of repeated subsequences of at least 50 residues in a sequence.
 
     Parameters:
     - sequence: The sequence string to search in.
-    - k: Length of the subsequence to check for repetition.
 
     Returns:
     - An integer representing the number of repeated subsequences.
     """
-    seen = {}
-    repeat_count = 0
 
-    for i in range(len(sequence) - k + 1):
-        subseq = sequence[i : i + k]
-        if subseq in seen:
-            if (
-                seen[subseq] == 1
-            ):  # Increment count only the first time we detect a repeat
-                repeat_count += 1
-            seen[subseq] += 1
-        else:
-            seen[subseq] = 1
-
-    return repeat_count
+    return len(repeat_pattern.findall(sequence))
