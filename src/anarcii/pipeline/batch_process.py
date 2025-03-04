@@ -16,8 +16,6 @@ def batch_process(ls, model, window_model, verbose, txt_file):
             for item in numbered_seqs:
                 file.write(repr(item) + "\n")
 
-        # Free up space
-        del sequences, processed_seqs, numbered_seqs
         counter += 1
 
     return []
