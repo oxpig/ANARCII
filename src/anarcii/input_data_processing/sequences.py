@@ -2,9 +2,11 @@ import re
 
 import torch
 
+from anarcii.inference.model_runner import ModelRunner
+from anarcii.inference.window_selector import WindowFinder
 from anarcii.input_data_processing.tokeniser import Tokeniser
 
-from .utils import pick_window, split_seq
+from .utils import pick_windows, split_seq
 
 # from anarcii.pipeline.anarcii_constants import n_jump
 
@@ -61,8 +63,8 @@ class SequenceProcessor:
     def __init__(
         self,
         seqs: dict[str, str],
-        model: torch.nn.Module,
-        window_model: torch.nn.Module,
+        model: ModelRunner,
+        window_model: WindowFinder,
         verbose: bool,
     ):
         """
@@ -75,8 +77,8 @@ class SequenceProcessor:
             verbose (bool): Whether to print detailed logs.
         """
         self.seqs: dict[str, str] = seqs
-        self.model: torch.nn.Module = model
-        self.window_model: torch.nn.Module = window_model
+        self.model: ModelRunner = model
+        self.window_model: WindowFinder = window_model
         self.verbose: bool = verbose
         self.offsets: dict[str, int] = {}
 
@@ -111,7 +113,7 @@ class SequenceProcessor:
 
             if cwc_matches:
                 # Output the integer index of a high scoring window
-                cwc_winner = pick_window(cwc_strings, self.window_model)
+                cwc_winner = pick_windows(cwc_strings, self.window_model)
 
                 if cwc_winner is not None:
                     # Append the start offset
@@ -126,7 +128,7 @@ class SequenceProcessor:
             # Split the sequence into 90-residue chunks and pick the best.
             windows = split_seq(sequence, n_jump=n_jump)
 
-            best_window = pick_window(windows, model=self.window_model, fallback=True)
+            best_window = pick_windows(windows, model=self.window_model, fallback=True)
 
             # Ensures start_index is at least 0.
             start_index = max((best_window * n_jump) - 40, 0)
