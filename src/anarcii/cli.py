@@ -79,22 +79,19 @@ def main():
         out = model.number([args.input])
 
     if not args.output:
-        for i in range(len(out)):
+        for query in out:
             # Print to screen
+            query_metadata = query[1]
             print(
-                " ID: ",
-                out[i][1]["query_name"],
-                "\n",
-                "Chain: ",
-                out[i][1]["chain_type"],
-                "\n",
-                "Score: ",
-                out[i][1]["score"],
-                "\n",
-                "Error: ",
-                out[i][1]["error"],
+                f" ID: {query_metadata['query_name']}\n",
+                f"Chain: {query_metadata['chain_type']}\n",
+                f"Score: {query_metadata['score']}\n",
+                f"Error: {query_metadata['error']}",
             )
-            [print(x) for x in out[i][0]]
+            width = max(sum(map(len, numbering)) for numbering, _ in query[0])
+            formatted = (f"{''.join(n):{width}s} {residue}" for n, residue in query[0])
+            print("\n".join(formatted))
+
     elif args.output.endswith(".csv"):
         model.to_csv(args.output)
     elif args.output.endswith(".txt"):
