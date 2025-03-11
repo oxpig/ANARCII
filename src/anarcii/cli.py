@@ -2,60 +2,58 @@ import argparse
 
 from anarcii.pipeline import Anarcii
 
+parser = argparse.ArgumentParser(
+    description="Run the Anarcii model on sequences or a fasta file."
+)
+parser.add_argument(
+    "input", type=str, help="Input sequence as a string or path to a fasta file."
+)
+parser.add_argument(
+    "-t",
+    "--seq_type",
+    type=str,
+    default="antibody",
+    help="Sequence type (default: antibody).",
+)
+parser.add_argument(
+    "-b",
+    "--batch_size",
+    type=int,
+    default=512,
+    help="Batch size for processing (default: 512).",
+)
+parser.add_argument(
+    "-c", "--cpu", action="store_true", help="Run on CPU (default: False)."
+)
+parser.add_argument(
+    "-n",
+    "--ncpu",
+    type=int,
+    default=-1,
+    help="Number of CPU threads to use (default: 1).",
+)
+parser.add_argument(
+    "-m",
+    "--mode",
+    type=str,
+    default="accuracy",
+    choices=["accuracy", "speed"],
+    help="Mode for running the model (default: accuracy).",
+)
+parser.add_argument(
+    "-o",
+    "--output",
+    type=str,
+    default=None,
+    help="Specify the output file (must end in .txt, .csv or .json).",
+)
+parser.add_argument(
+    "-v", "--verbose", action="store_true", help="Enable verbose output."
+)
+
 
 def main():
     # Define the argument parser
-    parser = argparse.ArgumentParser(
-        description="Run the Anarcii model on sequences or a fasta file."
-    )
-
-    # Add command-line flags and options
-    parser.add_argument(
-        "input", type=str, help="Input sequence as a string or path to a fasta file."
-    )
-    parser.add_argument(
-        "-t",
-        "--seq_type",
-        type=str,
-        default="antibody",
-        help="Sequence type (default: antibody).",
-    )
-    parser.add_argument(
-        "-b",
-        "--batch_size",
-        type=int,
-        default=512,
-        help="Batch size for processing (default: 512).",
-    )
-    parser.add_argument(
-        "-c", "--cpu", action="store_true", help="Run on CPU (default: False)."
-    )
-    parser.add_argument(
-        "-n",
-        "--ncpu",
-        type=int,
-        default=-1,
-        help="Number of CPU threads to use (default: 1).",
-    )
-    parser.add_argument(
-        "-m",
-        "--mode",
-        type=str,
-        default="accuracy",
-        choices=["accuracy", "speed"],
-        help="Mode for running the model (default: accuracy).",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        default=None,
-        help="Specify the output file (must end in .txt, .csv or .json).",
-    )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable verbose output."
-    )
-
     # Parse the arguments
     args = parser.parse_args()
 
