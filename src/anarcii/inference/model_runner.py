@@ -475,13 +475,30 @@ class ModelRunner:
 
                     ### 5D   Perform backfill for missed start of sequence, if missed
                     # numbering
+
+                    # This step ensures that first and last nums will always be
+                    # integers - does not proceed if not.
                     try:
                         first_num = int(nums[0][0])  # get first number
-                    except (IndexError, ValueError):
+                        last_num = int(nums[-1][0])  # get last number
+                    except (IndexError, ValueError) as e:
                         # When numbering has failed, `nums` is an empty list.
                         # When the sequences are messed up, the first number can
                         # be a string, like an EOS or an X token.
-                        first_num = 1
+                        captured_error = str(e)
+                        numbering.append(None)
+                        alignment.append(
+                            {
+                                "chain_type": "F",
+                                "score": round(normalized_score, 3),
+                                "query_start": None,
+                                "query_end": None,
+                                "error": f"Could not apply numbering: {captured_error}",
+                                "scheme": "imgt",
+                            }
+                        )
+                        error_occurred = True
+                        break
 
                     # Should not do this before 10 in case of failure to
                     # identify the gap.
@@ -497,14 +514,7 @@ class ModelRunner:
                         start_index = start_index - len(backfill_residues)
 
                     ### 5E Fill in up to 1 (starting IMGT residue) with gaps
-                    try:
-                        first_num = int(nums[0][0])  # get first number
-                    except (IndexError, ValueError):
-                        # When numbering has failed, `nums` is an empty list.
-                        # When the sequences are messed up, the first number can
-                        # be a string, like an EOS or an X token.
-                        first_num = 1
-
+                    first_num = int(nums[0][0])  # get first number again - may change
                     for missing_num in range(
                         first_num - 1, 0, -1
                     ):  # Start from first_num - 1, stop at 1, step by -1
@@ -514,7 +524,6 @@ class ModelRunner:
                     ### 5F Add gaps to nums where we are missing a number:
                     # e.g. predicted labels are 91 L, 93 K. convert to >>
                     # 91 L, 92 -, 93 K
-
                     i = 1
                     while i < len(nums):
                         if (int(nums[i][0]) - 1) > int(nums[i - 1][0]):
@@ -528,7 +537,6 @@ class ModelRunner:
                     for missing_num in range(last_num + 1, 129):
                         nums.append((missing_num, " "))
                         residues.append("-")
-                    last_num = int(nums[-1][0])
 
                     ### 6 Populate the meta data dict and append to alignment list
 
