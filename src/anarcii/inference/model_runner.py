@@ -349,7 +349,7 @@ class ModelRunner:
                                     }
                                 )
                                 error_occurred = True
-                                continue
+                                break
 
                         ###      No conditions have been found - it is a number label,
                         # append to nums
@@ -374,7 +374,7 @@ class ModelRunner:
                                     }
                                 )
                                 error_occurred = True
-                                continue
+                                break
 
                         ###      After each iteration through the sequence append the
                         # sequence residue
@@ -497,7 +497,6 @@ class ModelRunner:
                                 "scheme": "imgt",
                             }
                         )
-                        error_occurred = True
                         continue
 
                     # Should not do this before 10 in case of failure to
