@@ -85,7 +85,7 @@ class ModelRunner:
         model_loader = Loader(self.type, self.mode, self.device)
         return model_loader.model
 
-    def __call__(self, list_of_tuples, offsets):
+    def __call__(self, list_of_tuples, offsets, warnings):
         """
         This involves putting tokenised seqs into dataloader, making predictions,
         formating the output. Returning the numbered seqs to the user in the order in
@@ -98,7 +98,7 @@ class ModelRunner:
         indices = [t[0] for t in list_of_tuples]
 
         dl = dataloader(self.batch_size, seqs_only)
-        numbering, alignment = self._predict_numbering(dl)
+        numbering, alignment = self._predict_numbering(dl, warnings)
 
         numbered_output = format_output(
             indices, names_only, numbering, alignment, offsets
@@ -106,7 +106,7 @@ class ModelRunner:
 
         return numbered_output
 
-    def _predict_numbering(self, dl):
+    def _predict_numbering(self, dl, warnings):
         """
         1 Runs the autoregressive inference loop which takes batches of sequences and
         predicts for the whole batch
@@ -349,7 +349,7 @@ class ModelRunner:
                                     }
                                 )
                                 error_occurred = True
-                                break
+                                continue
 
                         ###      No conditions have been found - it is a number label,
                         # append to nums
@@ -374,7 +374,7 @@ class ModelRunner:
                                     }
                                 )
                                 error_occurred = True
-                                break
+                                continue
 
                         ###      After each iteration through the sequence append the
                         # sequence residue
@@ -498,7 +498,7 @@ class ModelRunner:
                             }
                         )
                         error_occurred = True
-                        break
+                        continue
 
                     # Should not do this before 10 in case of failure to
                     # identify the gap.
@@ -538,17 +538,32 @@ class ModelRunner:
                         nums.append((missing_num, " "))
                         residues.append("-")
 
+                    # Add warnings
+                    if warnings:
+                        warnings_message = []  # start with an empty list
+
+                        for n, r in zip(nums, residues):
+                            if n[0] == 23 and r != "C":
+                                warnings_message.append("Missing cys23")
+                            if n[0] == 104 and r != "C":
+                                warnings_message.append("Missing cys104")
+                            if n[0] == 41 and r != "W":
+                                warnings_message.append("Missing trp41")
+                    else:
+                        warnings_message = None
+
                     ### 6 Populate the meta data dict and append to alignment list
 
-                    # Successful - append.
                     numbering.append(list(zip(nums, residues)))
+
+                    # Successful - append.
                     alignment.append(
                         {
                             "chain_type": str(pred_tokens[batch_no, 1]),
                             "score": round(normalized_score, 3),
                             "query_start": start_index,
                             "query_end": end_index,
-                            "error": None,
+                            "error": warnings_message,
                             "scheme": "imgt",
                         }
                     )

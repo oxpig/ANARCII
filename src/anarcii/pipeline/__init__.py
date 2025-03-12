@@ -131,7 +131,7 @@ class Anarcii:
             "tcr", self.mode, self.batch_size, self.device, self.scfv
         )
 
-    def number(self, seqs):
+    def number(self, seqs, warnings=False):
         if self.seq_type.lower() == "unknown" and not (
             ".pdb" in seqs or ".mmcif" in seqs
         ):
@@ -172,7 +172,9 @@ class Anarcii:
                 print("### Ran antibody/TCR classifier. ###\n")
                 print(f"Found {len(antibodies)} antibodies and {len(tcrs)} TCRs.")
 
-            antis_out = self.number_with_type(antibodies, "antibody")
+            antis_out = self.number_with_type(
+                antibodies, "antibody", chunk=False, warnings=warnings
+            )
             # If max length has been exceeded here (but not in the next chunk).
             # You need to ensure that the TCR numberings are written to the same file.
             # check status of self.max_len_exceed.
@@ -184,7 +186,9 @@ class Anarcii:
             # We need to stay in unknown mode and append to an output file.
             self.unknown = True
 
-            tcrs_out = self.number_with_type(tcrs, "tcr", chunk=chunk_subsequent)
+            tcrs_out = self.number_with_type(
+                tcrs, "tcr", chunk=chunk_subsequent, warnings=warnings
+            )
             self.unknown = False  # Reset to false.
 
             self._last_numbered_output = join_mixed_types(
@@ -201,7 +205,9 @@ class Anarcii:
         # They will be classified into ab/tcrs by an inner model which takes a list of
         #  seqs read from a PDB file (these can now pass through the Classifii code).
         else:
-            self._last_numbered_output = self.number_with_type(seqs, self.seq_type)
+            self._last_numbered_output = self.number_with_type(
+                seqs, self.seq_type, chunk=False, warnings=warnings
+            )
             return convert_output(
                 ls=self._last_numbered_output,
                 format=self.output_format,
@@ -230,7 +236,7 @@ class Anarcii:
 
             return converted_seqs
 
-    def number_with_type(self, seqs, inner_type, chunk=False):
+    def number_with_type(self, seqs, inner_type, chunk=False, warnings=False):
         if inner_type == "shark":
             model = self.shark_model
             window_model = self.shark_window
@@ -357,7 +363,7 @@ class Anarcii:
 
         if len(chunk_list) > 1:
             numbered_seqs = batch_process(
-                chunk_list, model, window_model, self.verbose, self.text_
+                chunk_list, model, window_model, self.verbose, self.text_, warnings
             )
 
             end = time.time()
@@ -382,7 +388,7 @@ class Anarcii:
 
             # Offset for longseqs only - replace the indices...
             # ==========================================================================
-            numbered_seqs = model(processed_seqs, offsets)
+            numbered_seqs = model(processed_seqs, offsets, warnings=warnings)
             # ==========================================================================
 
             end = time.time()
