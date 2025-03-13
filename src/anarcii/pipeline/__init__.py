@@ -168,28 +168,35 @@ class Anarcii:
             list_of_names = list(dict_of_seqs.keys())
             antibodies, tcrs = classifii_seqs(list_of_tuples_pre_classifii)
 
+            # If max length has been exceeded in either group (but not the other).
+            # You need to ensure that the numberings are written to the same file.
+            # check status of self.max_len_exceed.
+            if len(antibodies) > self.max_seqs_len or len(tcrs) > self.max_seqs_len:
+                chunk_outputs = True
+                self.max_len_exceed = True
+            else:
+                chunk_outputs = False
+                self.max_len_exceed = False
+
             if self.verbose:
                 print("### Ran antibody/TCR classifier. ###\n")
                 print(f"Found {len(antibodies)} antibodies and {len(tcrs)} TCRs.")
 
             antis_out = self.number_with_type(
-                antibodies, "antibody", chunk=False, warnings=warnings
+                antibodies, "antibody", chunk=chunk_outputs, warnings=warnings
             )
-            # If max length has been exceeded here (but not in the next chunk).
-            # You need to ensure that the TCR numberings are written to the same file.
-            # check status of self.max_len_exceed.
-            if self.max_len_exceed:
-                chunk_subsequent = True
-            else:
-                chunk_subsequent = False
 
-            # We need to stay in unknown mode and append to an output file.
-            self.unknown = True
+            # If exceeding the max number of seqs, chunk_outputs is True.
+            # >> we need to stay in unknown mode and append to an output file.
+            # If self.unknown is false then the output file will be deleted.
+            # >> set True and append to output file.
+            if chunk_outputs:
+                self.unknown = True
 
             tcrs_out = self.number_with_type(
-                tcrs, "tcr", chunk=chunk_subsequent, warnings=warnings
+                tcrs, "tcr", chunk=chunk_outputs, warnings=warnings
             )
-            self.unknown = False  # Reset to false.
+            self.unknown = False  # Reset to false. Can be deleted on next run.
 
             self._last_numbered_output = join_mixed_types(
                 antis_out, tcrs_out, list_of_names
@@ -245,7 +252,7 @@ class Anarcii:
             window_model = self.ig_window
         elif inner_type == "tcr":
             model = self.tcr_model
-            window_model = self.ig_window
+            window_model = self.tcr_window
         else:
             print("Error in defining sequence type to number.")
 
