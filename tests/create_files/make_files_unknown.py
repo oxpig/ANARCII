@@ -7,6 +7,7 @@ model = Anarcii(
     ncpu=4,
     mode="accuracy",
     verbose=True,
+    # max_seqs_len=5, # Ensure we test the write to output functionality.
 )
 model.number("../data/raw_data/unknown.fa")
 
