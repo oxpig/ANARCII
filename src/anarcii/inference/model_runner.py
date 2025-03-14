@@ -537,20 +537,6 @@ class ModelRunner:
                         nums.append((missing_num, " "))
                         residues.append("-")
 
-                    # Add warnings
-                    if warnings:
-                        warnings_message = []  # start with an empty list
-
-                        for n, r in zip(nums, residues):
-                            if n[0] == 23 and r != "C":
-                                warnings_message.append("Missing cys23")
-                            if n[0] == 104 and r != "C":
-                                warnings_message.append("Missing cys104")
-                            if n[0] == 41 and r != "W":
-                                warnings_message.append("Missing trp41")
-                    else:
-                        warnings_message = None
-
                     ### 6 Populate the meta data dict and append to alignment list
 
                     numbering.append(list(zip(nums, residues)))
@@ -562,7 +548,7 @@ class ModelRunner:
                             "score": round(normalized_score, 3),
                             "query_start": start_index,
                             "query_end": end_index,
-                            "error": warnings_message,
+                            "error": None,
                             "scheme": "imgt",
                         }
                     )
