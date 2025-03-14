@@ -1,5 +1,3 @@
-import pathlib
-
 import pytest
 
 from anarcii.input_data_processing import coerce_input, file_input
@@ -45,6 +43,10 @@ def test_coerce_input(input_data, expected):
     assert coerce_input(input_data) == expected
 
 
-@pytest.mark.xfail
-def test_file_input():
-    assert file_input(pathlib.Path())
+def test_file_input(pytestconfig):
+    fasta = pytestconfig.rootpath / "tests" / "data" / "raw_data" / "100_seqs.fa"
+    seqs = file_input(fasta)
+    assert seqs["sequence0"] == (
+        "SETLSLTCSVYGASISNSNSYWGWIRQPPGKRLEWLGSIYDSGSTSYNPSLSS"
+        "RVTISVDTSKNQVSLRLNSVTAADTGVYYCARHRDPPGSRWIFYYYYMDLWG"
+    )

@@ -1,9 +1,47 @@
+import gzip
 import pathlib
+
+import gemmi
 
 type Input = str | tuple[str, str] | list[str | tuple[str, str]] | dict[str, str]
 
+gz_suffixes = {".gz", ".z"}
+# Supported FASTA file suffixes.  Peptide sequences only, no nucleotides.
+fasta_suffixes = {".fasta", ".fas", ".fsa", ".fa", ".faa", ".mpfa"}
+# Supported PIR file suffixes.
+pir_suffixes = {".pir", ".nbrf", ".ali"}
 
-def file_input(path: pathlib.Path) -> dict[str, str]: ...
+supported_extensions = fasta_suffixes | pir_suffixes
+
+
+def file_input(path: pathlib.Path) -> dict[str, str]:
+    """
+    Extract peptide sequence strings from a file.
+
+    Supported file formats are:
+    * FASTA (.fasta, .fas, .fa, .faa, .mpfa and their gzipped equivalents).
+    * NBRF/PIR (.pir, .nbrf, .ali and their gzipped equivalents).
+
+    Args:
+        path (pathlib.Path): Path to the input file.
+
+    Returns:
+        dict[str, str]: The values are sequence strings and the keys are
+                        names/descriptions, which are assumed to be unique in the input
+                        file.
+    """
+    if (fasta_suffixes | pir_suffixes).intersection(path.suffixes):
+        with gzip.open(path, "rt") if path.suffix in gz_suffixes else open(path) as f:
+            entries: list[gemmi.FastaSeq] = gemmi.read_pir_or_fasta(f.read())
+
+        return {entry.header: entry.seq for entry in entries}
+
+    else:
+        raise ValueError(
+            f"{path.name} has an unsupported file extension.  These are supported:\n"
+            f"{', '.join(sorted(supported_extensions))}\n"
+            "and gzipped equivalents (*.gz, *.z)."
+        )
 
 
 def coerce_input(input_data: Input) -> dict[str, str]:
@@ -35,20 +73,24 @@ def coerce_input(input_data: Input) -> dict[str, str]:
         # Capture the cases list[tuple[str, str]] | dict[str, str],
         # containing name-sequence pairs.
         return dict(input_data)
+
     except ValueError:
         if isinstance(input_data, str):
-            # Capture the case of file input.
+            # Capture the case of file input (str).
             path = pathlib.Path(input_data)
             if path.suffix:
                 return file_input(path)
-            # Capture the case of a single peptide sequence string.
+
+            # Capture the case of a single peptide sequence (str).
             return {"sequence": input_data}
+
         if isinstance(input_data, tuple):
-            # Capture the case of a single name-sequence tuple[str, str].
+            # Capture the case of a single name-sequence (tuple[str, str]).
             name, sequence = input_data
             return {name: sequence}
+
         if isinstance(input_data, list):
-            # Capture the case of a list of peptide sequence strings, labelling
+            # Capture the case of a list of peptide sequences (list[str]), labelling
             # sequentially with `sequence-1`, `sequence-2`, etc..
             width = len(str(len(input_data)))
             return {
