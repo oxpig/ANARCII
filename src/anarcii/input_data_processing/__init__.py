@@ -1,4 +1,10 @@
+from __future__ import annotations
+
 import gzip
+import re
+from collections.abc import Iterator
+from functools import partial
+from itertools import chain
 from pathlib import Path
 
 import gemmi
@@ -12,6 +18,9 @@ fasta_suffixes = {".fasta", ".fas", ".fsa", ".fa", ".faa", ".mpfa"}
 pir_suffixes = {".pir", ".nbrf", ".ali"}
 
 supported_extensions = fasta_suffixes | pir_suffixes
+
+paired_sequence_delimiters = r"-\/"
+split_pattern = re.compile(rf"[{paired_sequence_delimiters.replace('\\', r'\\')}]")
 
 
 def file_input(path: Path) -> dict[str, str]:
@@ -105,3 +114,63 @@ def coerce_input(input_data: Input) -> dict[str, str]:
             }
 
     raise TypeError("Invalid input type.")
+
+
+def split_sequence(
+    name: str, sequence: str, verbose: bool = False
+) -> Iterator[tuple[str, str]] | tuple[tuple[str, str]]:
+    """
+    Split a sequence string on any of several standard delimiter characters.
+
+    Sequence delimiter characters are stripped from the start and end of a sequence
+    string.
+
+    Args:
+        name:      Sequence name.
+        sequence:  Peptide sequence, possibly containing delimiters.
+        verbose:   If true, print a warning message when the sequence is split.
+
+    Returns:
+        For split sequences, an iterator of 2-tuple name-sequence pairs.  For an unsplit
+        sequence, a 1-tuple containing a 2-tuple name-sequence pair.
+    """
+    # Strip leading and trailing delimiters.
+    sequence = sequence.strip(paired_sequence_delimiters)
+    # Check for remaining delimiters.
+    if "-" in sequence or "\\" in sequence or "/" in sequence:
+        if verbose:
+            print(
+                f"'{"' or '".join(paired_sequence_delimiters)}' found in sequence "
+                "{name}.  Assuming this is a paired sequence and splitting into parts."
+            )
+        # Split the sequence on these delimiters.
+        split_parts = re.split(split_pattern, sequence)
+        width = len(str(len(split_parts)))
+        # Create named parts
+        return (
+            (f"{name}-{i:0{width}d}", part) for i, part in enumerate(split_parts, 1)
+        )
+    else:
+        # If no delimiters, return the sequence as-is.
+        return ((name, sequence),)
+
+
+def split_sequences(seqs: dict[str, str], verbose: bool = False) -> dict[str, str]:
+    """
+    Split sequence strings on any of several standard delimiter characters.
+
+    Sequence delimiter characters are stripped from the start and end of each sequence
+    string.
+
+    Args:
+        seqs:     Dictionary of name-sequence pairs.
+        verbose:  If true, print a warning message for each split sequence.
+
+    Returns:
+        A dictionary in which sequence strings that have been split on delimiters have
+        been replaced with the split parts, each labelled with a unique name.  The input
+        key order is retained in the output, aside from the split sequences, which are
+        inserted in order at the position of their originating input sequence.
+    """
+    splitter = partial(split_sequence, verbose=verbose)
+    return dict(chain.from_iterable(map(splitter, seqs.keys(), seqs.values())))
