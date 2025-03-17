@@ -34,7 +34,7 @@ def file_input(path: Path) -> dict[str, str]:
         with gzip.open(path, "rt") if path.suffix in gz_suffixes else open(path) as f:
             entries: list[gemmi.FastaSeq] = gemmi.read_pir_or_fasta(f.read())
 
-        return {entry.header: entry.seq for entry in entries}
+        return {e.header: e.seq for e in entries if e.header and e.seq}
 
     else:
         raise ValueError(
