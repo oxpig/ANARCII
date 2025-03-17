@@ -77,7 +77,8 @@ def coerce_input(input_data: Input) -> dict[str, str]:
     # The only non-iterable sub-type of Input is pathlib.Path.
     except TypeError:
         # Capture the case of file input (pathlib.Path).
-        return file_input(input_data)
+        if isinstance(input_data, Path):
+            return file_input(input_data)
 
     # The remaining sub-types of Input are str | tuple[str, str] | list[str].
     except ValueError:
