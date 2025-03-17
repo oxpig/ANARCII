@@ -1,9 +1,9 @@
 import gzip
-import pathlib
+from pathlib import Path
 
 import gemmi
 
-type Input = str | tuple[str, str] | list[str | tuple[str, str]] | dict[str, str]
+type Input = Path | str | tuple[str, str] | list[str | tuple[str, str]] | dict[str, str]
 
 gz_suffixes = {".gz", ".z"}
 # Supported FASTA file suffixes.  Peptide sequences only, no nucleotides.
@@ -14,7 +14,7 @@ pir_suffixes = {".pir", ".nbrf", ".ali"}
 supported_extensions = fasta_suffixes | pir_suffixes
 
 
-def file_input(path: pathlib.Path) -> dict[str, str]:
+def file_input(path: Path) -> dict[str, str]:
     """
     Extract peptide sequence strings from a file.
 
@@ -74,10 +74,16 @@ def coerce_input(input_data: Input) -> dict[str, str]:
         # containing name-sequence pairs.
         return dict(input_data)
 
+    # The only non-iterable sub-type of Input is pathlib.Path.
+    except TypeError:
+        # Capture the case of file input (pathlib.Path).
+        return file_input(input_data)
+
+    # The remaining sub-types of Input are str | tuple[str, str] | list[str].
     except ValueError:
         if isinstance(input_data, str):
             # Capture the case of file input (str).
-            path = pathlib.Path(input_data)
+            path = Path(input_data)
             if path.suffix:
                 return file_input(path)
 
@@ -85,7 +91,7 @@ def coerce_input(input_data: Input) -> dict[str, str]:
             return {"sequence": input_data}
 
         if isinstance(input_data, tuple):
-            # Capture the case of a single name-sequence (tuple[str, str]).
+            # Capture the case of a single name-sequence pair (tuple[str, str]).
             name, sequence = input_data
             return {name: sequence}
 

@@ -43,9 +43,10 @@ def test_coerce_input(input_data, expected):
     assert coerce_input(input_data) == expected
 
 
-def test_file_input(pytestconfig):
+@pytest.mark.parametrize("input_function", [file_input, coerce_input])
+def test_file_input(pytestconfig, input_function):
     fasta = pytestconfig.rootpath / "tests" / "data" / "raw_data" / "100_seqs.fa"
-    seqs = file_input(fasta)
+    seqs = input_function(fasta)
     assert seqs["sequence0"] == (
         "SETLSLTCSVYGASISNSNSYWGWIRQPPGKRLEWLGSIYDSGSTSYNPSLSS"
         "RVTISVDTSKNQVSLRLNSVTAADTGVYYCARHRDPPGSRWIFYYYYMDLWG"
