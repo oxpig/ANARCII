@@ -900,7 +900,7 @@
     ],
     {
       "chain_type": "B",
-      "score": 32.435,
+      "score": 31.987,
       "query_start": 0,
       "query_end": 111,
       "error": null,
@@ -1809,7 +1809,7 @@
     ],
     {
       "chain_type": "A",
-      "score": 32.441,
+      "score": 32.112,
       "query_start": 0,
       "query_end": 108,
       "error": null,
@@ -2718,7 +2718,7 @@
     ],
     {
       "chain_type": "B",
-      "score": 32.026,
+      "score": 31.348,
       "query_start": 0,
       "query_end": 110,
       "error": null,
@@ -2747,28 +2747,28 @@
           3,
           " "
         ],
-        "-"
+        "K"
       ],
       [
         [
           4,
           " "
         ],
-        "-"
+        "T"
       ],
       [
         [
           5,
           " "
         ],
-        "-"
+        "T"
       ],
       [
         [
           6,
           " "
         ],
-        "-"
+        "Q"
       ],
       [
         [
@@ -2782,161 +2782,161 @@
           8,
           " "
         ],
-        "-"
+        "P"
       ],
       [
         [
           9,
           " "
         ],
-        "-"
+        "N"
       ],
       [
         [
           10,
           " "
         ],
-        "-"
+        "S"
       ],
       [
         [
           11,
           " "
         ],
-        "-"
+        "M"
       ],
       [
         [
           12,
           " "
         ],
-        "-"
+        "E"
       ],
       [
         [
           13,
           " "
         ],
-        "-"
+        "S"
       ],
       [
         [
           14,
           " "
         ],
-        "-"
+        "N"
       ],
       [
         [
           15,
           " "
         ],
-        "-"
+        "E"
       ],
       [
         [
           16,
           " "
         ],
-        "-"
+        "E"
       ],
       [
         [
           17,
           " "
         ],
-        "-"
+        "E"
       ],
       [
         [
           18,
           " "
         ],
-        "-"
+        "P"
       ],
       [
         [
           19,
           " "
         ],
-        "-"
+        "V"
       ],
       [
         [
           20,
           " "
         ],
-        "-"
+        "H"
       ],
       [
         [
           21,
           " "
         ],
-        "-"
+        "L"
       ],
       [
         [
           22,
           " "
         ],
-        "-"
+        "P"
       ],
       [
         [
           23,
           " "
         ],
-        "-"
+        "C"
       ],
       [
         [
           24,
           " "
         ],
-        "-"
+        "N"
       ],
       [
         [
           25,
           " "
         ],
-        "-"
+        "H"
       ],
       [
         [
           26,
           " "
         ],
-        "-"
+        "S"
       ],
       [
         [
           27,
           " "
         ],
-        "S"
+        "T"
       ],
       [
         [
           28,
           " "
         ],
-        "G"
+        "I"
       ],
       [
         [
           29,
           " "
         ],
-        "T"
+        "S"
       ],
       [
         [
           30,
           " "
         ],
-        "-"
+        "G"
       ],
       [
         [
@@ -2978,7 +2978,7 @@
           36,
           " "
         ],
-        "-"
+        "T"
       ],
       [
         [
@@ -3627,8 +3627,8 @@
     ],
     {
       "chain_type": "A",
-      "score": 32.064,
-      "query_start": 25,
+      "score": 31.836,
+      "query_start": 0,
       "query_end": 109,
       "error": null,
       "scheme": "imgt",
@@ -4536,7 +4536,7 @@
     ],
     {
       "chain_type": "B",
-      "score": 31.929,
+      "score": 31.266,
       "query_start": 0,
       "query_end": 112,
       "error": null,
@@ -5445,7 +5445,7 @@
     ],
     {
       "chain_type": "A",
-      "score": 32.496,
+      "score": 32.74,
       "query_start": 0,
       "query_end": 110,
       "error": null,
@@ -6354,7 +6354,7 @@
     ],
     {
       "chain_type": "B",
-      "score": 32.186,
+      "score": 31.423,
       "query_start": 0,
       "query_end": 111,
       "error": null,
@@ -7263,7 +7263,7 @@
     ],
     {
       "chain_type": "A",
-      "score": 32.242,
+      "score": 32.024,
       "query_start": 5,
       "query_end": 104,
       "error": null,
@@ -8172,7 +8172,7 @@
     ],
     {
       "chain_type": "B",
-      "score": 31.885,
+      "score": 31.708,
       "query_start": 0,
       "query_end": 112,
       "error": null,
@@ -9081,7 +9081,7 @@
     ],
     {
       "chain_type": "A",
-      "score": 31.35,
+      "score": 31.563,
       "query_start": 0,
       "query_end": 110,
       "error": null,
@@ -9990,7 +9990,7 @@
     ],
     {
       "chain_type": "B",
-      "score": 31.987,
+      "score": 31.701,
       "query_start": 0,
       "query_end": 113,
       "error": null,
@@ -10899,7 +10899,7 @@
     ],
     {
       "chain_type": "A",
-      "score": 32.912,
+      "score": 32.633,
       "query_start": 0,
       "query_end": 108,
       "error": null,
@@ -11808,7 +11808,7 @@
     ],
     {
       "chain_type": "B",
-      "score": 32.248,
+      "score": 31.69,
       "query_start": 0,
       "query_end": 111,
       "error": null,
@@ -12717,7 +12717,7 @@
     ],
     {
       "chain_type": "B",
-      "score": 32.248,
+      "score": 31.69,
       "query_start": 0,
       "query_end": 111,
       "error": null,
@@ -13626,7 +13626,7 @@
     ],
     {
       "chain_type": "B",
-      "score": 32.139,
+      "score": 31.68,
       "query_start": 0,
       "query_end": 109,
       "error": null,
@@ -14535,7 +14535,7 @@
     ],
     {
       "chain_type": "A",
-      "score": 32.568,
+      "score": 32.576,
       "query_start": 0,
       "query_end": 111,
       "error": null,
@@ -15444,7 +15444,7 @@
     ],
     {
       "chain_type": "B",
-      "score": 32.139,
+      "score": 31.68,
       "query_start": 0,
       "query_end": 109,
       "error": null,
@@ -16353,7 +16353,7 @@
     ],
     {
       "chain_type": "A",
-      "score": 32.568,
+      "score": 32.576,
       "query_start": 0,
       "query_end": 111,
       "error": null,
