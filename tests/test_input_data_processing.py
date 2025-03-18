@@ -36,7 +36,7 @@ def empty_input_files(tmp_path_factory):
 cases = {
     "single-sequence-string": (
         "test",
-        {"sequence": "test"},
+        {"Sequence": "test"},
     ),
     "single-name-sequence-tuple": (
         ("name", "test"),
@@ -44,11 +44,11 @@ cases = {
     ),
     "list-single-sequence-string": (
         ["test"],
-        {"sequence-1": "test"},
+        {"Sequence 1": "test"},
     ),
     "list-multiple-sequence-strings": (
         ["test-1", "test-2"],
-        {"sequence-1": "test-1", "sequence-2": "test-2"},
+        {"Sequence 1": "test-1", "Sequence 2": "test-2"},
     ),
     "list-single-name-sequence-tuple": (
         [("name", "test")],

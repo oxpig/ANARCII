@@ -89,7 +89,7 @@ def coerce_input(input_data: Input) -> dict[str, str]:
                 return file_input(path)
 
             # Capture the case of a single peptide sequence (str).
-            return {"sequence": input_data}
+            return {"Sequence": input_data}
 
         if isinstance(input_data, tuple):
             # Capture the case of a single name-sequence pair (tuple[str, str]).
@@ -101,7 +101,7 @@ def coerce_input(input_data: Input) -> dict[str, str]:
             # sequentially with `sequence-1`, `sequence-2`, etc..
             width = len(str(len(input_data)))
             return {
-                f"sequence-{i:0{width}d}": seq for i, seq in enumerate(input_data, 1)
+                f"Sequence {i:0{width}d}": seq for i, seq in enumerate(input_data, 1)
             }
 
     raise TypeError("Invalid input type.")
