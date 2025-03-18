@@ -5,7 +5,6 @@ import torch
 import torch.nn.functional as F
 
 from anarcii.classifii import model
-from anarcii.classifii.utils import split_types
 from anarcii.inference.utils import dataloader
 from anarcii.input_data_processing.tokeniser import Tokeniser
 
@@ -103,27 +102,27 @@ class Classifii:
         self.num = TypeTokeniser("number")
         self.model = TypeLoader(self.device).model
 
-    def __call__(self, sequences):
+    def __call__(self, sequences: dict[str, str]):
         tokenized_seqs = []
         # Capped at 235 for now.
-        for seq in sequences:
-            bookend_seq = [self.aa.start] + list(seq[1][:235]) + [self.aa.end]
+        for seq in sequences.values():
+            bookend_seq = [self.aa.start, *seq[:235], self.aa.end]
             try:
-                tokenized_seq = torch.from_numpy(self.aa.encode(bookend_seq))
-                tokenized_seqs.append((seq[0], tokenized_seq))
+                tokenized_seqs.append(torch.from_numpy(self.aa.encode(bookend_seq)))
             except KeyError as e:
                 print(
                     f"Sequence could not be numbered. Contains an invalid residue: {e}"
                 )
-                tokenized_seqs.append((seq[0], torch.from_numpy(self.aa.encode(["F"]))))
+                tokenized_seqs.append(torch.from_numpy(self.aa.encode(["F"])))
 
-        seqs_only = [t[1] for t in tokenized_seqs]  # tokenised
-
-        dl = dataloader(self.batch_size, seqs_only)
+        dl = dataloader(self.batch_size, tokenized_seqs)
         classes = self._classify(dl)
 
-        antibodies, tcrs = split_types(sequences, classes)
-        return antibodies, tcrs
+        grouped_sequences = {key: {} for key in set(classes)}
+        for classification, (name, sequence) in zip(classes, sequences.items()):
+            grouped_sequences[classification][name] = sequence
+
+        return grouped_sequences
 
     def _classify(self, dl):
         preds = []
