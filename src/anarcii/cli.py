@@ -1,4 +1,5 @@
 import argparse
+import sys
 
 from anarcii.pipeline import Anarcii
 
@@ -67,16 +68,10 @@ def main():
         verbose=args.verbose,
     )
 
-    # Check if the input is a file or a single sequence
-    if args.input.endswith((".fasta", ".fa", ".fa.gz", ".fasta.gz")):
-        print(f"Processing fasta file: {args.input}")
+    try:
         out = model.number(args.input)
-    elif args.input.endswith(".pdb"):
-        print(f"Processing PDB file: {args.input}")
-        out = model.number(args.input)
-    else:
-        print(f"Processing sequence: {args.input}")
-        out = model.number([args.input])
+    except TypeError as e:
+        sys.exit(str(e))
 
     if not args.output:
         for query in out:

@@ -2,15 +2,14 @@ import os
 import time
 
 from anarcii.classifii import Classifii
-from anarcii.classifii.utils import join_mixed_types
 from anarcii.inference.model_runner import ModelRunner
 from anarcii.inference.window_selector import WindowFinder
 
 # Classes
+from anarcii.input_data_processing import Input, coerce_input, split_sequences
 from anarcii.input_data_processing.sequences import SequenceProcessor
 from anarcii.output_data_processing.convert_to_legacy_format import convert_output
 from anarcii.output_data_processing.schemes import convert_number_scheme
-from anarcii.pdb_process import renumber_pdb_with_anarcii
 from anarcii.pipeline.batch_process import batch_process
 from anarcii.pipeline.configuration import configure_cpus, configure_device
 
@@ -22,14 +21,6 @@ from anarcii.pipeline.methods import (
     to_imgt_regions,
     to_json,
     to_text,
-)
-
-# Functions for processing input
-from anarcii.pipeline.utils import (
-    count_lines_with_greater_than,
-    is_tuple_list,
-    read_fasta,
-    split_sequence,
 )
 
 
@@ -102,48 +93,24 @@ class Anarcii:
         self.device = configure_device(self.cpu, self.ncpu)
         self.print_initial_configuration()
 
-    def number(self, seqs):
-        if self.seq_type.lower() == "unknown" and not (
-            ".pdb" in seqs or ".mmcif" in seqs
-        ):
-            # classify the  sequences into tcrs or antibodies
+    def number(self, seqs: Input):
+        seqs: dict[str, str] = split_sequences(coerce_input(seqs), self.verbose)
+
+        # Retain the original input order, by which to sort the numbered output.
+        input_order = list(seqs.keys())
+
+        if self.seq_type == "unknown":
+            # Classify the sequences as TCRs or antibodies.
             classifii_seqs = Classifii(batch_size=self.batch_size, device=self.device)
-
-            if isinstance(seqs, list):
-                if is_tuple_list(seqs):
-                    dict_of_seqs = {}
-                    for t in seqs:
-                        split_seqs = split_sequence(t[0], t[1], self.verbose)
-                        dict_of_seqs.update(split_seqs)
-
-                elif not is_tuple_list(seqs):
-                    dict_of_seqs = {}
-                    for n, t in enumerate(seqs):
-                        name = f"seq{n}"
-                        # Split each sequence as needed and update the dictionary
-                        split_seqs = split_sequence(name, t, self.verbose)
-                        dict_of_seqs.update(split_seqs)
-
-            elif isinstance(seqs, str) and os.path.exists(seqs) and ".fa" in seqs:
-                fastas = read_fasta(seqs, self.verbose)
-                dict_of_seqs = {t[0]: t[1] for t in fastas}
-
-            else:
-                print(
-                    "Input is not a list of sequences, nor a valid path to a fasta file"
-                    "(must end in .fa or .fasta), nor a pdb file (.pdb)."
-                )
-                return []
-
-            list_of_tuples_pre_classifii = list(dict_of_seqs.items())
-            list_of_names = list(dict_of_seqs.keys())
-            antibodies, tcrs = classifii_seqs(list_of_tuples_pre_classifii)
+            classified = classifii_seqs(seqs)
 
             if self.verbose:
+                n_antibodies = len(classified["A"])
+                n_tcrs = len(classified["T"])
                 print("### Ran antibody/TCR classifier. ###\n")
-                print(f"Found {len(antibodies)} antibodies and {len(tcrs)} TCRs.")
+                print(f"Found {n_antibodies} antibodies and {n_tcrs} TCRs.")
 
-            antis_out = self.number_with_type(antibodies, "antibody")
+            antis_out = self.number_with_type(classified["A"], "antibody")
             # If max length has been exceeded here (but not in the next chunk).
             # You need to ensure that the TCR numberings are written to the same file.
             # check status of self.max_len_exceed.
@@ -155,12 +122,14 @@ class Anarcii:
             # We need to stay in unknown mode and append to an output file.
             self.unknown = True
 
-            tcrs_out = self.number_with_type(tcrs, "tcr", chunk=chunk_subsequent)
+            tcrs_out = self.number_with_type(
+                classified["T"], "tcr", chunk=chunk_subsequent
+            )
             self.unknown = False  # Reset to false.
 
-            self._last_numbered_output = join_mixed_types(
-                antis_out, tcrs_out, list_of_names
-            )
+            # Combine the numbered sequences and restore the input order.
+            numbered = {**antis_out, **tcrs_out}
+            self._last_numbered_output = {key: numbered[key] for key in input_order}
 
             return convert_output(
                 ls=self._last_numbered_output,
@@ -202,15 +171,16 @@ class Anarcii:
 
             return converted_seqs
 
-    def number_with_type(self, seqs, inner_type, chunk=False):
+    def number_with_type(self, seqs: dict[str, str], seq_type, chunk=False):
         model = ModelRunner(
-            inner_type, self.mode, self.batch_size, self.device, self.verbose
+            seq_type, self.mode, self.batch_size, self.device, self.verbose
         )
-        window_model = WindowFinder(inner_type, self.mode, self.batch_size, self.device)
+        window_model = WindowFinder(seq_type, self.mode, self.batch_size, self.device)
 
         # Reset this
         self.max_len_exceed = False
 
+        # TODO:  Deal with serialisation.
         # clear the output file
         if hasattr(self, "text_") and os.path.exists(self.text_) and not self.unknown:
             os.remove(self.text_)
@@ -218,109 +188,29 @@ class Anarcii:
         chunk_list = []
         begin = time.time()
 
-        if isinstance(seqs, list):
-            if is_tuple_list(seqs):
-                if self.verbose:
-                    print(
-                        "Running on a list of tuples of format: [(name,sequence), ...]."
-                    )
+        if self.verbose:
+            print("Length of sequence list: ", len(seqs))
 
-                nms = [x[0] for x in seqs]
-                if len(nms) != len(set(nms)):  # Detect duplicates
-                    raise SystemExit(
-                        "Error: Duplicate names found."
-                        + "Please ensure all names are unique."
-                    )
-
-                dict_of_seqs = {}
-                for t in seqs:
-                    # Split each sequence as needed and update the dictionary
-                    split_seqs = split_sequence(t[0], t[1], self.verbose)
-                    dict_of_seqs.update(split_seqs)
-
-            elif not is_tuple_list(seqs):
-                if self.verbose:
-                    print("Running on a list of strings: [sequence, ...].")
-
-                dict_of_seqs = {}
-                for n, t in enumerate(seqs):
-                    name = f"seq{n}"
-                    # Split each sequence as needed and update the dictionary
-                    split_seqs = split_sequence(name, t, self.verbose)
-                    dict_of_seqs.update(split_seqs)
-
-            if self.verbose:
-                print("Length of sequence list: ", len(dict_of_seqs))
-
-            # If the list is huge - breakup into chunks of 1M.
-            if len(dict_of_seqs) > self.max_seqs_len or chunk:
-                print(
-                    "\nMax # of seqs exceeded.",
-                    f"Running chunks of {self.max_seqs_len}.\n",
-                )
-
-                keys = list(dict_of_seqs.keys())  # Convert dictionary keys to a list
-                num_seqs = len(keys)
-
-                num_chunks = (len(dict_of_seqs) // self.max_seqs_len) + 1
-                for i in range(num_chunks):
-                    chunk_keys = keys[
-                        i * self.max_seqs_len : (i + 1) * self.max_seqs_len
-                    ]
-                    chunk_list.append({k: dict_of_seqs[k] for k in chunk_keys})
-
-                self.max_len_exceed = True
-
-        # Fasta file
-        elif isinstance(seqs, str) and os.path.exists(seqs) and ".fa" in seqs:
-            if self.verbose:
-                print("Running on fasta file.")
-
-            num_seqs = count_lines_with_greater_than(seqs)
-            if self.verbose:
-                print("Length of sequence list: ", num_seqs)
-
-            if num_seqs > self.max_seqs_len:
-                print(
-                    f"Max # of seqs exceeded. Running chunks of {self.max_seqs_len}.\n"
-                )
-                num_chunks = (num_seqs // self.max_seqs_len) + 1
-                for i in range(num_chunks):
-                    fastas = read_fasta(seqs, self.verbose)[
-                        i * self.max_seqs_len : (i + 1) * self.max_seqs_len
-                    ]
-                    chunk_list.append({t[0]: t[1] for t in fastas})
-                self.max_len_exceed = True
-
-            else:
-                fastas = read_fasta(seqs, self.verbose)
-                dict_of_seqs = {t[0]: t[1] for t in fastas}
-
-        # PDB files
-        elif (
-            isinstance(seqs, str)
-            and os.path.exists(seqs)
-            and (".pdb" in seqs or ".mmcif" in seqs)
-        ):
-            # Unknown mode is taken care of here. Do not worry about passing classifii.
-            print(f"Renumbering a PDB/mmCIF file in {self.seq_type} mode")
-            numbered_chains = renumber_pdb_with_anarcii(
-                seqs,
-                inner_seq_type=self.seq_type,
-                inner_mode=self.mode,
-                inner_batch_size=self.batch_size,
-                inner_cpu=self.cpu,
-            )
-            return numbered_chains
-
-        else:
+        # If the list is huge - breakup into chunks of 1M.
+        if len(seqs) > self.max_seqs_len or chunk:
+            # TODO:  Address chunked numbering.
             print(
-                "Input is not a list of sequences, nor a valid path to a fasta file "
-                "(must end in .fa or .fasta), nor a pdb file (.pdb)."
+                "\nMax # of seqs exceeded.",
+                f"Running chunks of {self.max_seqs_len}.\n",
             )
-            return []
+
+            keys = list(seqs.keys())  # Convert dictionary keys to a list
+            num_seqs = len(keys)
+
+            num_chunks = (len(seqs) // self.max_seqs_len) + 1
+            for i in range(num_chunks):
+                chunk_keys = keys[i * self.max_seqs_len : (i + 1) * self.max_seqs_len]
+                chunk_list.append({k: seqs[k] for k in chunk_keys})
+
+            self.max_len_exceed = True
 
         if len(chunk_list) > 1:
+            # TODO:  Address chunked numbering.
             numbered_seqs = batch_process(
                 chunk_list, model, window_model, self.verbose, self.text_
             )
@@ -340,15 +230,11 @@ class Anarcii:
 
         else:
             # instantiate the Sequences class and process
-            sequences = SequenceProcessor(
-                dict_of_seqs, model, window_model, self.verbose
-            )
+            sequences = SequenceProcessor(seqs, model, window_model, self.verbose)
             processed_seqs, offsets = sequences.process_sequences()
 
-            # Offset for longseqs only - replace the indices...
-            # ==========================================================================
+            # Perform numbering.
             numbered_seqs = model(processed_seqs, offsets)
-            # ==========================================================================
 
             end = time.time()
             runtime = round((end - begin) / 60, 2)
