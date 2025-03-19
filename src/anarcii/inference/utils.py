@@ -101,33 +101,3 @@ def build_inward_list(length: int, start_num: int, end_num: int):
 
     else:
         raise ValueError("Error in converting predicted insertions labels.")
-
-
-def format_output(indices, names, numbering, alignment, offsets):
-    """
-    Reorders the predicted outputs according to the original index.
-
-    In order to maximise the speed gains that come from sorting and padding by max
-    seq length in batches the original indicies were kept before sorting
-    and then used to reorder the length sorted outputs to the original order.
-    """
-
-    if not len(indices) == len(names) == len(numbering) == len(alignment):
-        exit("Length of names does not equal predictions, an error has occurred.")
-
-    # Update `align` with `query_name`
-    for name, align in zip(names, alignment):
-        align["query_name"] = name
-        if offset := offsets.get(name):
-            try:
-                align["query_start"] += offset
-                align["query_end"] += offset
-            except TypeError:
-                # catch None type in query start and end
-                continue
-
-    output = sorted(zip(indices, numbering, alignment))
-
-    # Remove the original index to get back the original list order
-    output = [(number, align) for _, number, align in output]
-    return output

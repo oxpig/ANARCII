@@ -1,9 +1,10 @@
 import torch
 
+from anarcii.input_data_processing.sequences import TokenisedSequence
 from anarcii.input_data_processing.tokeniser import NumberingTokeniser
 
 from .model_loader import Loader
-from .utils import build_inward_list, dataloader, format_output
+from .utils import build_inward_list, dataloader
 
 # NEED TO COME BACK TO THIS CODE AND LOOK AT THE TRY EXCEPT LOOPS....
 # SOMETHING SHOULD BE MODIFIED TO REDUCE THEM....
@@ -85,7 +86,7 @@ class ModelRunner:
         model_loader = Loader(self.type, self.mode, self.device)
         return model_loader.model
 
-    def __call__(self, list_of_tuples, offsets):
+    def __call__(self, tokenised_seqs: dict[str, TokenisedSequence], offsets):
         """
         This involves putting tokenised seqs into dataloader, making predictions,
         formating the output. Returning the numbered seqs to the user in the order in
@@ -93,18 +94,16 @@ class ModelRunner:
         """
 
         # NB: Provide a list of recommended batch sizes based on RAM and architecture
-        seqs_only = [t[2] for t in list_of_tuples]  # tokenised
-        names_only = [t[1] for t in list_of_tuples]
-        indices = [t[0] for t in list_of_tuples]
 
-        dl = dataloader(self.batch_size, seqs_only)
-        numbering, alignment = self._predict_numbering(dl)
+        dl = dataloader(self.batch_size, list(tokenised_seqs.values()))
+        numbering = dict(zip(tokenised_seqs.keys(), self._predict_numbering(dl)))
 
-        numbered_output = format_output(
-            indices, names_only, numbering, alignment, offsets
-        )
+        # Add offsets, where necessary.
+        for key, value in offsets.items():
+            numbering[key]["query_start"] += value
+            numbering[key]["query_end"] += value
 
-        return numbered_output
+        return numbering
 
     def _predict_numbering(self, dl):
         """
