@@ -132,7 +132,6 @@ class ModelRunner:
             print(f"Making predictions on {len(dl)} batches.")
 
         numbering = []
-        alignment = []
 
         num = 0
 
@@ -253,10 +252,9 @@ class ModelRunner:
                     #### MAGIC NUMBER ####
                     # This is the antibody cutoff - need a new one for TCRS
                     if normalized_score < 13.5:
-                        numbering.append(None)
-
-                        alignment.append(
+                        numbering.append(
                             {
+                                "numbering": None,
                                 "chain_type": "F",
                                 "score": normalized_score,
                                 "query_start": None,
@@ -349,9 +347,9 @@ class ModelRunner:
                             except ValueError as e:
                                 # Capture the error message from the exception
                                 captured_error = str(e)
-                                numbering.append(None)
-                                alignment.append(
+                                numbering.append(
                                     {
+                                        "numbering": None,
                                         "chain_type": "F",
                                         "score": normalized_score,
                                         "query_start": None,
@@ -374,9 +372,9 @@ class ModelRunner:
                             except ValueError as e:
                                 # Capture the error message from the exception
                                 captured_error = str(e)
-                                numbering.append(None)
-                                alignment.append(
+                                numbering.append(
                                     {
+                                        "numbering": None,
                                         "chain_type": "F",
                                         "score": normalized_score,
                                         "query_start": None,
@@ -515,9 +513,9 @@ class ModelRunner:
                         # an X token. End the loop here and move on to the next seq
                         # in the batch.
                         captured_error = str(e)
-                        numbering.append(None)
-                        alignment.append(
+                        numbering.append(
                             {
+                                "numbering": None,
                                 "chain_type": "F",
                                 "score": normalized_score,
                                 "query_start": None,
@@ -568,11 +566,10 @@ class ModelRunner:
 
                     ### 6 Populate the meta data dict and append to alignment list
 
-                    numbering.append(list(zip(nums, residues)))
-
                     # Successful - append.
-                    alignment.append(
+                    numbering.append(
                         {
+                            "numbering": list(zip(nums, residues)),
                             "chain_type": str(pred_tokens[batch_no, 1]),
                             "score": normalized_score,
                             "query_start": start_index,
@@ -582,4 +579,4 @@ class ModelRunner:
                         }
                     )
 
-            return numbering, alignment
+            return numbering

@@ -1,3 +1,4 @@
+# FIXME:  Refactor for new numbered sequence data structure.
 def convert_output(ls, format, verbose):
     if format == "simple":
         return ls

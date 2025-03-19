@@ -74,27 +74,28 @@ def main():
         sys.exit(str(e))
 
     if not args.output:
-        for query in out:
+        for name, query in out.values():
             # Print to screen
-            query_metadata = query[1]
             print(
-                f" ID: {query_metadata['query_name']}\n",
-                f"Chain: {query_metadata['chain_type']}\n",
-                f"Score: {query_metadata['score']}\n",
-                f"Error: {query_metadata['error']}",
+                f" ID: {name}\n",
+                f"Chain: {query['chain_type']}\n",
+                f"Score: {query['score']}\n",
+                f"Error: {query['error']}",
             )
-            width = max(sum(map(len, numbering)) for numbering, _ in query[0])
-            formatted = (f"{''.join(n):{width}s} {residue}" for n, residue in query[0])
+            numbering = query["numbering"]
+            width = max(sum(map(len, numbering)) for numbering, _ in numbering)
+            formatted = (f"{''.join(n):{width}s} {residue}" for n, residue in numbering)
             print("\n".join(formatted))
 
     elif args.output.endswith(".csv"):
         model.to_csv(args.output)
-    elif args.output.endswith(".txt"):
-        model.to_txt(args.output)
     elif args.output.endswith(".json"):
         model.to_json(args.output)
+    # TODO:  Add msgpack support.
+    # elif args.output.endswith(".msgpack"):
+    #     model.to_msgpack(args.output)
     else:
-        raise ValueError("Output file must end in .txt, .csv, or .json.")
+        raise ValueError("Output file must end in .csv, or .json.")
 
 
 if __name__ == "__main__":
