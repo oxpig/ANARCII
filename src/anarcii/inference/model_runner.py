@@ -136,7 +136,6 @@ class ModelRunner:
         alignment = []
 
         num = 0
-        batch = 1
 
         pad_token = self.pad_token
         sos_token = self.sos_token
@@ -148,7 +147,6 @@ class ModelRunner:
 
         with torch.no_grad():
             for X in dl:
-                batch += 1
                 src = X.to(self.device)
                 batch_size = src.shape[0]
                 trg_len = src.shape[1] + 1  # Need to add 1 to include chain ID
