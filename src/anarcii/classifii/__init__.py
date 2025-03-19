@@ -102,7 +102,7 @@ class Classifii:
         self.num = TypeTokeniser("number")
         self.model = TypeLoader(self.device).model
 
-    def __call__(self, sequences: dict[str, str]):
+    def __call__(self, sequences: dict[str, str]) -> dict[str, dict[str, str]]:
         tokenized_seqs = []
         # Capped at 235 for now.
         for seq in sequences.values():
