@@ -39,9 +39,7 @@ def dataloader(batch_size, list_of_tensors):
     Returns:
     - DataLoader: Batches of shape [batch_size, max_seq_len].
     """
-    return DataLoader(
-        list_of_tensors, batch_size=batch_size, shuffle=False, collate_fn=collate_fn
-    )
+    return DataLoader(list_of_tensors, batch_size=batch_size, collate_fn=collate_fn)
 
 
 def build_inward_list(length: int, start_num: int, end_num: int):
