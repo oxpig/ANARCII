@@ -28,18 +28,18 @@ def collate_fn(batch):
     return pad_sequence(batch, batch_first=True, padding_value=0)
 
 
-def dataloader(batch_size, list_of_tensors):
+def dataloader(batch_size, tokenised_seqs):
     """
     Returns a DataLoader that batches sequences dynamically.
 
     Parameters:
     - batch_size (int): Number of sequences per batch.
-    - list_of_tensors (list of tensors): Tokenized sequences.
+    - tokenised_seqs (list of tensors): Tokenized sequences.
 
     Returns:
     - DataLoader: Batches of shape [batch_size, max_seq_len].
     """
-    return DataLoader(list_of_tensors, batch_size=batch_size, collate_fn=collate_fn)
+    return DataLoader(tokenised_seqs, batch_size=batch_size, collate_fn=collate_fn)
 
 
 def build_inward_list(length: int, start_num: int, end_num: int):
