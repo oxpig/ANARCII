@@ -1,6 +1,6 @@
 import torch
 
-from anarcii.input_data_processing.sequences import TokenisedSequence
+from anarcii.input_data_processing import TokenisedSequence
 from anarcii.input_data_processing.tokeniser import NumberingTokeniser
 
 from .model_loader import Loader

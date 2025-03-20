@@ -8,8 +8,13 @@ from itertools import chain
 from pathlib import Path
 
 import gemmi
+import torch
 
+# Valid user input types.
 type Input = Path | str | tuple[str, str] | list[str | tuple[str, str]] | dict[str, str]
+# A TokenisedSequence is a torch.Tensor of dtype np.int32.
+type TokenisedSequence = torch.Tensor
+
 
 gz_suffixes = {".gz", ".z"}
 # Supported FASTA file suffixes.  Peptide sequences only, no nucleotides.

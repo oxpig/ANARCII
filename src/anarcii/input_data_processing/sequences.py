@@ -4,12 +4,10 @@ import torch
 
 from anarcii.inference.model_runner import ModelRunner
 from anarcii.inference.window_selector import WindowFinder
+from anarcii.input_data_processing import TokenisedSequence
 from anarcii.input_data_processing.tokeniser import Tokeniser
 
 from .utils import pick_windows, split_seq
-
-# A TokenisedSequence is a torch.Tensor of dtype np.int32.
-TokenisedSequence = torch.Tensor
 
 # A regex pattern to match no more than 200 residues, containing a 'CWC' pattern
 # (cysteine followed by 5–25 residues followed by a tryptophan followed by 50–80
