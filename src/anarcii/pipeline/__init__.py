@@ -1,16 +1,17 @@
-import os
+from __future__ import annotations
+
 import time
+from collections.abc import Iterable, Iterator
+from itertools import batched
+from typing import Any
 
 from anarcii.classifii import Classifii
 from anarcii.inference.model_runner import ModelRunner
 from anarcii.inference.window_selector import WindowFinder
-
-# Classes
 from anarcii.input_data_processing import Input, coerce_input, split_sequences
 from anarcii.input_data_processing.sequences import SequenceProcessor
 from anarcii.output_data_processing.convert_to_legacy_format import convert_output
 from anarcii.output_data_processing.schemes import convert_number_scheme
-from anarcii.pipeline.batch_process import batch_process
 from anarcii.pipeline.configuration import configure_cpus, configure_device
 
 # Processing output
@@ -22,6 +23,54 @@ from anarcii.pipeline.methods import (
     to_json,
     to_text,
 )
+
+
+def number_sequences(
+    sequences: dict[str, str],
+    model: ModelRunner,
+    window_model: WindowFinder,
+    verbose: bool = False,
+) -> dict[str, Any]:
+    """
+    Number sequences using the given model.
+
+    Args:
+        sequences:     A mapping of name-sequence pairs to be numbered.
+        model:         The numbering model.
+        window_model:  The window-finding model.
+        verbose:       Print more debug output if true.
+
+    Returns:
+        A results dictionary, with the sequence names as keys and dictionaries of the
+        numbering and metadata as values.
+    """
+    processor = SequenceProcessor(sequences, model, window_model, verbose)
+    tokenised_seqs, offsets = processor.process_sequences()
+
+    # Perform numbering.
+    return model(tokenised_seqs, offsets)
+
+
+def batch_process(
+    chunks: Iterable[Iterable[tuple[str, str]]],
+    model: ModelRunner,
+    window_model: WindowFinder,
+    verbose: bool = False,
+    n_chunks: int | None = None,
+) -> Iterator[dict[str, Any]]:
+    """
+    An iterator to number sequences in batches.
+
+    This is intended to be used to apply `number_sequences` to batches of (name,
+    sequence) pairs, as produced by `itertools.batched(sequences.items())`, where
+    `sequences` is a mapping of names to sequences.
+    """
+    for counter, chunk in enumerate(chunks, 1):
+        if verbose:
+            total = f" of {n_chunks}" if n_chunks else ""
+            print(f"\nChunk: {counter}{total}.")
+
+        yield number_sequences(dict(chunk), model, window_model, verbose)
 
 
 # This is the orchestrator of the whole pipeline.
@@ -177,69 +226,26 @@ class Anarcii:
         )
         window_model = WindowFinder(seq_type, self.mode, self.batch_size, self.device)
 
-        # Reset this
-        self.max_len_exceed = False
-
-        # TODO:  Deal with serialisation.
-        # clear the output file
-        if hasattr(self, "text_") and os.path.exists(self.text_) and not self.unknown:
-            os.remove(self.text_)
-
-        chunk_list = []
-        begin = time.time()
+        n_seqs = len(seqs)
+        n_chunks = n_seqs // self.max_seqs_len + 1
 
         if self.verbose:
-            print("Length of sequence list: ", len(seqs))
+            print(f"Length of sequence list: {n_seqs}")
+            begin = time.time()
 
-        # If the list is huge - breakup into chunks of 1M.
-        if len(seqs) > self.max_seqs_len or chunk:
-            # TODO:  Address chunked numbering.
-            print(
-                "\nMax # of seqs exceeded.",
-                f"Running chunks of {self.max_seqs_len}.\n",
-            )
+        # Chunk the input into batches of self.max_seqs_len sequences.
+        batches = batched(seqs.items(), self.max_seqs_len)
+        numbered_batches = batch_process(
+            batches, model, window_model, self.verbose, n_chunks
+        )
 
-            keys = list(seqs)  # Convert dictionary keys to a list
-            num_seqs = len(keys)
+        numbered_seqs = {}
+        for numbered_batch in numbered_batches:
+            numbered_seqs.update(numbered_batch)
 
-            num_chunks = (len(seqs) // self.max_seqs_len) + 1
-            for i in range(num_chunks):
-                chunk_keys = keys[i * self.max_seqs_len : (i + 1) * self.max_seqs_len]
-                chunk_list.append({k: seqs[k] for k in chunk_keys})
-
-            self.max_len_exceed = True
-
-        if len(chunk_list) > 1:
-            # TODO:  Address chunked numbering.
-            numbered_seqs = batch_process(
-                chunk_list, model, window_model, self.verbose, self.text_
-            )
-
+        if self.verbose:
             end = time.time()
             runtime = round((end - begin) / 60, 2)
+            print(f"Numbered {n_seqs} seqs in {runtime} mins. \n")
 
-            if self.verbose:
-                print(f"Numbered {num_seqs} seqs in {runtime} mins. \n")
-
-            print(
-                f"\nOutput written to {self.text_}. Convert to csv or text with: "
-                "model.to_csv(filepath) or model.to_text(filepath)"
-            )
-
-            return numbered_seqs
-
-        else:
-            # instantiate the Sequences class and process
-            sequences = SequenceProcessor(seqs, model, window_model, self.verbose)
-            processed_seqs, offsets = sequences.process_sequences()
-
-            # Perform numbering.
-            numbered_seqs = model(processed_seqs, offsets)
-
-            end = time.time()
-            runtime = round((end - begin) / 60, 2)
-
-            if self.verbose:
-                print(f"Numbered {len(numbered_seqs)} seqs in {runtime} mins. \n")
-
-            return numbered_seqs
+        return numbered_seqs
