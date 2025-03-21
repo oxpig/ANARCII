@@ -87,7 +87,7 @@ class TestFiles:
             file_input(empty_input_files / "foo.bar")
 
 
-@pytest.mark.parametrize("input_data, expected", cases.values(), ids=cases.keys())
+@pytest.mark.parametrize("input_data, expected", cases.values(), ids=cases)
 def test_coerce_input(input_data, expected):
     """Check that non-file input data is coerced into the expected format."""
     assert coerce_input(input_data) == expected

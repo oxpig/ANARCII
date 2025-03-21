@@ -27,7 +27,7 @@ class TypeTokeniser(Tokeniser):
             ]
 
         elif self.vocab_type == "number":
-            self.vocab = [self.pad, self.start, *type_tokens.keys()]
+            self.vocab = [self.pad, self.start, *type_tokens]
         else:
             raise ValueError(f"Vocab type {vocab_type} not supported")
 

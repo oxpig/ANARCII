@@ -97,7 +97,7 @@ class Anarcii:
         seqs: dict[str, str] = split_sequences(coerce_input(seqs), self.verbose)
 
         # Retain the original input order, by which to sort the numbered output.
-        input_order = list(seqs.keys())
+        input_order = list(seqs)
 
         if self.seq_type == "unknown":
             # Classify the sequences as TCRs or antibodies.
@@ -199,7 +199,7 @@ class Anarcii:
                 f"Running chunks of {self.max_seqs_len}.\n",
             )
 
-            keys = list(seqs.keys())  # Convert dictionary keys to a list
+            keys = list(seqs)  # Convert dictionary keys to a list
             num_seqs = len(keys)
 
             num_chunks = (len(seqs) // self.max_seqs_len) + 1
