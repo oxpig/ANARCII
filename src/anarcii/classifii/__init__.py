@@ -8,6 +8,8 @@ from anarcii.classifii import model
 from anarcii.inference.utils import dataloader
 from anarcii.input_data_processing.tokeniser import Tokeniser
 
+type_tokens = {"A": "antibody", "T": "tcr"}
+
 
 class TypeTokeniser(Tokeniser):
     def __init__(self, vocab_type="protein"):
@@ -25,12 +27,7 @@ class TypeTokeniser(Tokeniser):
             ]
 
         elif self.vocab_type == "number":
-            self.vocab = [
-                self.pad,
-                self.start,
-                "A",  # Antibody
-                "T",  # TCR
-            ]
+            self.vocab = [self.pad, self.start, *type_tokens.keys()]
         else:
             raise ValueError(f"Vocab type {vocab_type} not supported")
 
@@ -118,9 +115,9 @@ class Classifii:
         dl = dataloader(self.batch_size, tokenized_seqs)
         classes = self._classify(dl)
 
-        grouped_sequences = {key: {} for key in set(classes)}
+        grouped_sequences = {type_tokens[key]: {} for key in set(classes)}
         for classification, (name, sequence) in zip(classes, sequences.items()):
-            grouped_sequences[classification][name] = sequence
+            grouped_sequences[type_tokens[classification]][name] = sequence
 
         return grouped_sequences
 

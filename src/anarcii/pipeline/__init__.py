@@ -105,12 +105,12 @@ class Anarcii:
             classified = classifii_seqs(seqs)
 
             if self.verbose:
-                n_antibodies = len(classified["A"])
-                n_tcrs = len(classified["T"])
+                n_antibodies = len(classified["antibody"])
+                n_tcrs = len(classified["tcr"])
                 print("### Ran antibody/TCR classifier. ###\n")
                 print(f"Found {n_antibodies} antibodies and {n_tcrs} TCRs.")
 
-            antis_out = self.number_with_type(classified["A"], "antibody")
+            antis_out = self.number_with_type(classified["antibody"], "antibody")
             # If max length has been exceeded here (but not in the next chunk).
             # You need to ensure that the TCR numberings are written to the same file.
             # check status of self.max_len_exceed.
@@ -123,7 +123,7 @@ class Anarcii:
             self.unknown = True
 
             tcrs_out = self.number_with_type(
-                classified["T"], "tcr", chunk=chunk_subsequent
+                classified["tcr"], "tcr", chunk=chunk_subsequent
             )
             self.unknown = False  # Reset to false.
 
