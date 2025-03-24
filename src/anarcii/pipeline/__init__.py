@@ -142,9 +142,6 @@ class Anarcii:
     def number(self, seqs: Input):
         seqs: dict[str, str] = split_sequences(coerce_input(seqs), self.verbose)
 
-        # Retain the original input order, by which to sort the numbered output.
-        input_order = list(seqs)
-
         if self.seq_type == "unknown":
             # Classify the sequences as TCRs or antibodies.
             classifii_seqs = Classifii(batch_size=self.batch_size, device=self.device)
@@ -161,25 +158,16 @@ class Anarcii:
             for seq_type, sequences in classified.items():
                 numbered.update(self.number_with_type(sequences, seq_type))
 
-            # Restore the original input order to the numbered sequences.
-            self._last_numbered_output = {key: numbered[key] for key in input_order}
-
-            return convert_output(
-                ls=self._last_numbered_output,
-                format=self.output_format,
-                verbose=self.verbose,
-            )
-
         else:
-            # PDB files can be run directly, bypassing classifii at this stage.
-            # They will be classified into ab/tcrs by an inner model which takes list of
-            #  seqs read from a PDB file (these can pass through the Classifii code).
-            self._last_numbered_output = self.number_with_type(seqs, self.seq_type)
-            return convert_output(
-                ls=self._last_numbered_output,
-                format=self.output_format,
-                verbose=self.verbose,
-            )
+            numbered = self.number_with_type(seqs, self.seq_type)
+
+        # Restore the original input order to the numbered sequences.
+        self._last_numbered_output = {key: numbered[key] for key in seqs}
+        return convert_output(
+            ls=self._last_numbered_output,
+            format=self.output_format,
+            verbose=self.verbose,
+        )
 
     def to_scheme(self, scheme="imgt"):
         # Check if there's output to save
