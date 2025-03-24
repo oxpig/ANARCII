@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import sys
 import time
 from collections.abc import Iterable, Iterator
-from itertools import batched
 from typing import Any
 
 from anarcii.classifii import Classifii
@@ -23,6 +23,21 @@ from anarcii.pipeline.methods import (
     to_json,
     to_text,
 )
+
+if sys.version_info >= (3, 12):
+    from itertools import batched
+else:
+    from itertools import islice
+
+    def batched(iterable, n, *, strict=False):
+        # batched('ABCDEFG', 3) → ABC DEF G
+        if n < 1:
+            raise ValueError("n must be at least one")
+        iterator = iter(iterable)
+        while batch := tuple(islice(iterator, n)):
+            if strict and len(batch) != n:
+                raise ValueError("batched(): incomplete batch")
+            yield batch
 
 
 def number_sequences(
@@ -163,6 +178,7 @@ class Anarcii:
 
         # Restore the original input order to the numbered sequences.
         self._last_numbered_output = {key: numbered[key] for key in seqs}
+
         return convert_output(
             ls=self._last_numbered_output,
             format=self.output_format,
