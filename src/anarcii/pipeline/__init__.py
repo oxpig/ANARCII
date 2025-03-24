@@ -174,8 +174,7 @@ class Anarcii:
             # PDB files can be run directly, bypassing classifii at this stage.
             # They will be classified into ab/tcrs by an inner model which takes list of
             #  seqs read from a PDB file (these can pass through the Classifii code).
-            type = "antibody" if ".pdb" in seqs or ".mmcif" in seqs else self.seq_type
-            self._last_numbered_output = self.number_with_type(seqs, type)
+            self._last_numbered_output = self.number_with_type(seqs, self.seq_type)
             return convert_output(
                 ls=self._last_numbered_output,
                 format=self.output_format,
