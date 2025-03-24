@@ -152,10 +152,12 @@ def split_sequence(
     # Check for remaining delimiters.
     if "-" in sequence or "\\" in sequence or "/" in sequence:
         if verbose:
+            delimiters_str = "' or '".join(paired_sequence_delimiters)
             print(
-                f"'{"' or '".join(paired_sequence_delimiters)}' found in sequence "
-                "{name}.  Assuming this is a paired sequence and splitting into parts."
+                f"'{delimiters_str}' found in sequence {name}.",
+                "Assuming this is a paired sequence and splitting into parts.",
             )
+
         # Split the sequence on these delimiters.
         split_parts = re.split(split_pattern, sequence)
         width = len(str(len(split_parts)))
