@@ -1,4 +1,3 @@
-import contextlib
 import filecmp
 import pathlib
 import shutil
@@ -10,8 +9,9 @@ from anarcii import Anarcii
 
 if sys.version_info < (3, 11):
     import os
+    from contextlib import contextmanager
 
-    @contextlib.contextmanager
+    @contextmanager
     def chdir(path):
         """
         Change directory for the duration of the context.
@@ -24,7 +24,7 @@ if sys.version_info < (3, 11):
         finally:
             os.chdir(_old_cwd)
 else:
-    chdir = contextlib.chdir
+    from contextlib import chdir
 
 
 raw_filenames = "1kb5.pdb", "8kdm.pdb"

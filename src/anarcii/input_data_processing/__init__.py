@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import re
+import sys
 from collections.abc import Iterator
 from functools import partial
 from itertools import chain
@@ -28,8 +29,11 @@ pir_suffixes = {".pir", ".nbrf", ".ali"}
 supported_extensions = fasta_suffixes | pir_suffixes
 
 paired_sequence_delimiters = r"-\/"
-split_pattern = paired_sequence_delimiters.replace("\\", r"\\")
-split_pattern = re.compile(rf"[{split_pattern}]")
+if sys.version_info < (3, 12):
+    split_pattern = paired_sequence_delimiters.replace("\\", r"\\")
+    split_pattern = re.compile(rf"[{split_pattern}]")
+else:
+    split_pattern = re.compile(f"[{paired_sequence_delimiters.replace('\\', r'\\')}]")
 
 
 def file_input(path: Path) -> dict[str, str]:
