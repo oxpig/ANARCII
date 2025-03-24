@@ -117,12 +117,9 @@ class Anarcii:
         self.batch_size = batch_size
         self.verbose = verbose
         self.cpu = cpu
-        self.text_ = "output.txt"
         self.max_seqs_len = max_seqs_len
-        self.max_len_exceed = False
 
         self.output_format = output_format.lower()
-        self.unknown = False
 
         self._last_numbered_output = None
         # Has a conversion to a new number scheme occured?
@@ -190,11 +187,6 @@ class Anarcii:
         if self._last_numbered_output is None:
             raise ValueError("No output to convert. Run the model first.")
 
-        elif self.max_len_exceed:
-            raise ValueError(
-                f"Cannot renumber more than {1024 * 100} sequences and convert"
-                " to alternate scheme. Feature update coming soon!"
-            )
         else:
             converted_seqs = convert_number_scheme(self._last_numbered_output, scheme)
             print(f"Last output converted to {scheme}")
