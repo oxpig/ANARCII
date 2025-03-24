@@ -159,25 +159,12 @@ class Anarcii:
                 print("### Ran antibody/TCR classifier. ###\n")
                 print(f"Found {n_antibodies} antibodies and {n_tcrs} TCRs.")
 
-            antis_out = self.number_with_type(classified["antibody"], "antibody")
-            # If max length has been exceeded here (but not in the next chunk).
-            # You need to ensure that the TCR numberings are written to the same file.
-            # check status of self.max_len_exceed.
-            if self.max_len_exceed:
-                chunk_subsequent = True
-            else:
-                chunk_subsequent = False
+            # Combine the numbered sequences.
+            numbered = {}
+            for seq_type, sequences in classified.items():
+                numbered.update(self.number_with_type(sequences, seq_type))
 
-            # We need to stay in unknown mode and append to an output file.
-            self.unknown = True
-
-            tcrs_out = self.number_with_type(
-                classified["tcr"], "tcr", chunk=chunk_subsequent
-            )
-            self.unknown = False  # Reset to false.
-
-            # Combine the numbered sequences and restore the input order.
-            numbered = {**antis_out, **tcrs_out}
+            # Restore the original input order to the numbered sequences.
             self._last_numbered_output = {key: numbered[key] for key in input_order}
 
             return convert_output(
@@ -220,7 +207,7 @@ class Anarcii:
 
             return converted_seqs
 
-    def number_with_type(self, seqs: dict[str, str], seq_type, chunk=False):
+    def number_with_type(self, seqs: dict[str, str], seq_type):
         model = ModelRunner(
             seq_type, self.mode, self.batch_size, self.device, self.verbose
         )
