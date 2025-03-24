@@ -2,25 +2,21 @@ from __future__ import annotations
 
 import gzip
 import re
-import sys
 from collections.abc import Iterator
 from functools import partial
 from itertools import chain
 from pathlib import Path
+from typing import TypeAlias
 
 import gemmi
 import torch
 
-if sys.version_info >= (3, 12):
-    # Valid user input types.
-    type Input = (
-        Path | str | tuple[str, str] | list[str | tuple[str, str]] | dict[str, str]
-    )
-    # A TokenisedSequence is a torch.Tensor of dtype np.int32.
-    type TokenisedSequence = torch.Tensor
-else:
-    Input = Path | str | tuple[str, str] | list[str | tuple[str, str]] | dict[str, str]
-    TokenisedSequence = torch.Tensor
+# Valid user input types.
+Input: TypeAlias = (
+    Path | str | tuple[str, str] | list[str | tuple[str, str]] | dict[str, str]
+)
+# A TokenisedSequence is a torch.Tensor of dtype np.int32.
+TokenisedSequence: TypeAlias = torch.Tensor
 
 
 gz_suffixes = {".gz", ".z"}
