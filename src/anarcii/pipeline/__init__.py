@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import sys
 import time
-from collections.abc import Iterable, Iterator
-from typing import Any
 
 from anarcii.classifii import Classifii
 from anarcii.inference.model_runner import ModelRunner
@@ -40,55 +38,6 @@ else:
             yield batch
 
 
-def number_sequences(
-    sequences: dict[str, str],
-    model: ModelRunner,
-    window_model: WindowFinder,
-    verbose: bool = False,
-) -> dict[str, Any]:
-    """
-    Number sequences using the given model.
-
-    Args:
-        sequences:     A mapping of name-sequence pairs to be numbered.
-        model:         The numbering model.
-        window_model:  The window-finding model.
-        verbose:       Print more debug output if true.
-
-    Returns:
-        A results dictionary, with the sequence names as keys and dictionaries of the
-        numbering and metadata as values.
-    """
-    processor = SequenceProcessor(sequences, model, window_model, verbose)
-    tokenised_seqs, offsets = processor.process_sequences()
-
-    # Perform numbering.
-    return model(tokenised_seqs, offsets)
-
-
-def batch_process(
-    chunks: Iterable[Iterable[tuple[str, str]]],
-    model: ModelRunner,
-    window_model: WindowFinder,
-    verbose: bool = False,
-    n_chunks: int | None = None,
-) -> Iterator[dict[str, Any]]:
-    """
-    An iterator to number sequences in batches.
-
-    This is intended to be used to apply `number_sequences` to batches of (name,
-    sequence) pairs, as produced by `itertools.batched(sequences.items())`, where
-    `sequences` is a mapping of names to sequences.
-    """
-    for counter, chunk in enumerate(chunks, 1):
-        if verbose:
-            total = f" of {n_chunks}" if n_chunks else ""
-            print(f"\nChunk: {counter}{total}.")
-
-        yield number_sequences(dict(chunk), model, window_model, verbose)
-
-
-# This is the orchestrator of the whole pipeline.
 class Anarcii:
     """
     This class instantiates the models based on user input.
@@ -156,28 +105,60 @@ class Anarcii:
 
     def number(self, seqs: Input):
         seqs: dict[str, str] = split_sequences(coerce_input(seqs), self.verbose)
+        n_seqs = len(seqs)
+
+        # If there is more than one chunk, we will need to serialise the output.
+        serialise = n_seqs > self.max_seqs_len
+
+        if self.verbose:
+            print(f"Length of sequence list: {n_seqs}")
+            n_chunks = n_seqs // self.max_seqs_len + 1
+            print(
+                f"Processing sequences in {n_chunks} chunks of {self.max_seqs_len} "
+                "sequences."
+            )
+            begin = time.time()
 
         if self.seq_type == "unknown":
-            # Classify the sequences as TCRs or antibodies.
             classifii_seqs = Classifii(batch_size=self.batch_size, device=self.device)
-            classified = classifii_seqs(seqs)
+
+        for i, chunk in enumerate(batched(seqs.items(), self.max_seqs_len), 1):
+            chunk = dict(chunk)
 
             if self.verbose:
-                n_antibodies = len(classified["antibody"])
-                n_tcrs = len(classified["tcr"])
-                print("### Ran antibody/TCR classifier. ###\n")
-                print(f"Found {n_antibodies} antibodies and {n_tcrs} TCRs.")
+                print(f"Processing chunk {i} of {n_chunks}.")
 
-            # Combine the numbered sequences.
-            numbered = {}
-            for seq_type, sequences in classified.items():
-                numbered.update(self.number_with_type(sequences, seq_type))
+            if self.seq_type == "unknown":
+                # Classify the sequences as TCRs or antibodies.
+                classified = classifii_seqs(chunk)
 
-        else:
-            numbered = self.number_with_type(seqs, self.seq_type)
+                if self.verbose:
+                    n_antibodies = len(classified["antibody"])
+                    n_tcrs = len(classified["tcr"])
+                    print("### Ran antibody/TCR classifier. ###\n")
+                    print(f"Found {n_antibodies} antibodies and {n_tcrs} TCRs.")
 
-        # Restore the original input order to the numbered sequences.
-        self._last_numbered_output = {key: numbered[key] for key in seqs}
+                # Combine the numbered sequences.
+                numbered = {}
+                for seq_type, sequences in classified.items():
+                    numbered.update(self.number_with_type(sequences, seq_type))
+
+            else:
+                numbered = self.number_with_type(chunk, self.seq_type)
+
+            # Restore the original input order to the numbered sequences.
+            numbered = {key: numbered[key] for key in chunk}
+
+            if serialise:
+                # TODO: Finalise the serialisation implementation.
+                ...
+            else:
+                self._last_numbered_output = numbered
+
+        if self.verbose:
+            end = time.time()
+            runtime = round((end - begin) / 60, 2)
+            print(f"Numbered {n_seqs} seqs in {runtime} mins. \n")
 
         return convert_output(
             ls=self._last_numbered_output,
@@ -208,26 +189,8 @@ class Anarcii:
         )
         window_model = WindowFinder(seq_type, self.mode, self.batch_size, self.device)
 
-        n_seqs = len(seqs)
-        n_chunks = n_seqs // self.max_seqs_len + 1
+        processor = SequenceProcessor(seqs, model, window_model, self.verbose)
+        tokenised_seqs, offsets = processor.process_sequences()
 
-        if self.verbose:
-            print(f"Length of sequence list: {n_seqs}")
-            begin = time.time()
-
-        # Chunk the input into batches of self.max_seqs_len sequences.
-        batches = batched(seqs.items(), self.max_seqs_len)
-        numbered_batches = batch_process(
-            batches, model, window_model, self.verbose, n_chunks
-        )
-
-        numbered_seqs = {}
-        for numbered_batch in numbered_batches:
-            numbered_seqs.update(numbered_batch)
-
-        if self.verbose:
-            end = time.time()
-            runtime = round((end - begin) / 60, 2)
-            print(f"Numbered {n_seqs} seqs in {runtime} mins. \n")
-
-        return numbered_seqs
+        # Perform numbering.
+        return model(tokenised_seqs, offsets)
