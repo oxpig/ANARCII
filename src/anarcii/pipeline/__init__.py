@@ -38,6 +38,26 @@ else:
             yield batch
 
 
+def format_timediff(timediff: int | float) -> str:
+    """
+    Format a time difference in seconds as hours, minutes and seconds strings.
+
+    Args:
+        runtime:  The time difference in seconds.
+
+    Returns:
+        Time difference formatted as 'H hours, MM minutes, SS.SS seconds'.
+    """
+    hours, remainder = divmod(timediff, 3600)
+    mins, secs = divmod(remainder, 60)
+
+    hours = f"{hours:.0f} hr, " if hours else ""
+    mins = f"{mins:{'02' if hours else ''}.0f} min, " if hours or mins else ""
+    secs = f"{secs:{'02' if hours or mins else ''}.2f} sec"
+
+    return f"{hours}{mins}{secs}"
+
+
 class Anarcii:
     """
     This class instantiates the models based on user input.
@@ -157,8 +177,7 @@ class Anarcii:
 
         if self.verbose:
             end = time.time()
-            runtime = round((end - begin) / 60, 2)
-            print(f"Numbered {n_seqs} seqs in {runtime} mins. \n")
+            print(f"Numbered {n_seqs} seqs in {format_timediff(end - begin)}.\n")
 
         return convert_output(
             ls=self._last_numbered_output,
