@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import pathlib
 import sys
 import time
+import uuid
+from itertools import chain
+
+import msgpack
 
 from anarcii.classifii import Classifii
 from anarcii.inference.model_runner import ModelRunner
@@ -106,6 +111,7 @@ class Anarcii:
         self.output_format = output_format.lower()
 
         self._last_numbered_output = None
+        self._serialised_output = None
         # Has a conversion to a new number scheme occured?
         self._last_converted_output = None
         self._alt_scheme = None
@@ -127,9 +133,6 @@ class Anarcii:
         seqs: dict[str, str] = split_sequences(coerce_input(seqs), self.verbose)
         n_seqs = len(seqs)
 
-        # If there is more than one chunk, we will need to serialise the output.
-        serialise = n_seqs > self.max_seqs_len
-
         if self.verbose:
             print(f"Length of sequence list: {n_seqs}")
             n_chunks = n_seqs // self.max_seqs_len + 1
@@ -138,6 +141,21 @@ class Anarcii:
                 "sequences."
             )
             begin = time.time()
+
+        # If there is more than one chunk, we will need to serialise the output.
+        if serialise := n_seqs > self.max_seqs_len:
+            self._serialised_output = pathlib.Path(f"anarcii-{uuid.uuid4()}.msgpack")
+            if self.verbose:
+                print(
+                    f"Serialising output to {self._serialised_output} as the number of "
+                    f"sequences exceeds the serialisation limit of {self.max_seqs_len}."
+                )
+            packer = msgpack.Packer()
+            # Initialise a MessagePack map with the expected number of sequences, so we
+            # can later stream the key value pairs, rather than needing to create a
+            # separate MessagePack map for each chunk.
+            with self._serialised_output.open("wb") as f:
+                f.write(packer.pack_map_header(n_seqs))
 
         if self.seq_type == "unknown":
             classifii_seqs = Classifii(batch_size=self.batch_size, device=self.device)
@@ -170,8 +188,12 @@ class Anarcii:
             numbered = {key: numbered[key] for key in chunk}
 
             if serialise:
-                # TODO: Finalise the serialisation implementation.
-                ...
+                # Stream the key-value pairs of the results dict to the previously
+                # initialised MessagePack map.
+                items_stream = chain.from_iterable(numbered.items())
+                packed_items = b"".join(map(packer.pack, items_stream))
+                with self._serialised_output.open("ab") as f:
+                    f.write(packed_items)
             else:
                 self._last_numbered_output = numbered
 
