@@ -21,10 +21,8 @@ from anarcii.pipeline.configuration import configure_cpus, configure_device
 from anarcii.pipeline.methods import (
     print_initial_configuration,
     to_csv,
-    to_dict,
     to_imgt_regions,
     to_json,
-    to_text,
 )
 
 if sys.version_info >= (3, 12):
@@ -118,10 +116,8 @@ class Anarcii:
 
         # Attach methods
         self.print_initial_configuration = print_initial_configuration.__get__(self)
-        self.to_text = to_text.__get__(self)
         self.to_csv = to_csv.__get__(self)
         self.to_json = to_json.__get__(self)
-        self.to_dict = to_dict.__get__(self)
         self.to_imgt_regions = to_imgt_regions.__get__(self)
 
         # Get device and ncpu config
