@@ -153,8 +153,8 @@ class Anarcii:
                 classified = classifii_seqs(chunk)
 
                 if self.verbose:
-                    n_antibodies = len(classified["antibody"])
-                    n_tcrs = len(classified["tcr"])
+                    n_antibodies = len(classified.get("antibody", ()))
+                    n_tcrs = len(classified.get("tcr", ()))
                     print("### Ran antibody/TCR classifier. ###\n")
                     print(f"Found {n_antibodies} antibodies and {n_tcrs} TCRs.")
 
