@@ -23,6 +23,7 @@ from anarcii.pipeline.methods import (
     to_csv,
     to_imgt_regions,
     to_json,
+    to_list,
 )
 
 if sys.version_info >= (3, 12):
@@ -116,6 +117,7 @@ class Anarcii:
 
         # Attach methods
         self.print_initial_configuration = print_initial_configuration.__get__(self)
+        self.to_list = to_list.__get__(self)
         self.to_csv = to_csv.__get__(self)
         self.to_json = to_json.__get__(self)
         self.to_imgt_regions = to_imgt_regions.__get__(self)
@@ -202,6 +204,23 @@ class Anarcii:
             format=self.output_format,
             verbose=self.verbose,
         )
+
+    def to_list(self):
+        """
+        Convert to list of tuples structure.
+        [(numbering, meta_dict)...]
+        """
+        ls = []
+        for y, x in self._last_numbered_output.items():
+            n = x["numbering"]
+
+            dt = x.copy()
+            dt["query_name"] = y
+
+            del dt["numbering"]
+            ls.append((n, dt))
+
+        return ls
 
     def to_scheme(self, scheme="imgt"):
         # Check if there's output to save

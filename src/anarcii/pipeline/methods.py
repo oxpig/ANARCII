@@ -29,6 +29,39 @@ def print_initial_configuration(self):
             print("Recommended batch size for CPU: 8.")
 
 
+def to_list(self):
+    """
+    Convert to list of tuples structure.
+    [(numbering, meta_dict)...]
+    """
+    # Check if there's output to save
+    if self._last_numbered_output is None:
+        raise ValueError("No output to save. Run the model first.")
+
+    elif self._last_converted_output:
+        ls = []
+        for y, x in self._last_converted_output.items():
+            n = x["numbering"]
+
+            dt = x.copy()
+            dt["query_name"] = y
+
+            del dt["numbering"]
+            ls.append((n, dt))
+        return ls
+    else:
+        ls = []
+        for y, x in self._last_numbered_output.items():
+            n = x["numbering"]
+
+            dt = x.copy()
+            dt["query_name"] = y
+
+            del dt["numbering"]
+            ls.append((n, dt))
+        return ls
+
+
 def to_csv(self, file_path):
     # Check if there's output to save
     if self._last_numbered_output is None:
