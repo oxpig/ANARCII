@@ -39,10 +39,16 @@ def test_files_are_identical(anarcii_model, tmp_path, pytestconfig):
         test_file = tmp_path / f"window_test_1.{filetype}"
         expected_file = expected_file_templates[filetype]
 
-        if filetype == "txt":
-            anarcii_model.to_text(test_file)
-        else:
-            anarcii_model.to_json(test_file)
+        # if filetype == "txt":
+        #     anarcii_model.to_text(test_file)
+        # else:
+        #     anarcii_model.to_json(test_file)
+
+        ls_format = anarcii_model.to_list()
+
+        # need to write to a json
+        with open(test_file, "w") as f:
+            json.dump(ls_format, f)
 
         if filetype == "json":
             with open(expected_file) as f1, open(test_file) as f2:
