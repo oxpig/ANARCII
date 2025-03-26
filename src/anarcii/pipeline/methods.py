@@ -36,7 +36,7 @@ def to_list(self):
     """
     # Check if there's output to save
     if self._last_numbered_output is None:
-        raise ValueError("No output to save. Run the model first.")
+        raise ValueError("No output to convert to list. Run the model first.")
 
     elif self._last_converted_output:
         ls = []

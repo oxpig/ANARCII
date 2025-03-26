@@ -6,6 +6,7 @@ __pycache__/
 *example_dev*
 /notebook/tmp
 
+*.msgpack
 
 *gpu*.pt
 
