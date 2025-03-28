@@ -131,7 +131,9 @@ class Anarcii:
 
         if self.verbose:
             print(f"Length of sequence list: {n_seqs}")
-            n_chunks = n_seqs // self.max_seqs_len + 1
+            n_chunks, remainder = divmod(n_seqs, self.max_seqs_len)
+            n_chunks += bool(remainder)
+
             print(
                 f"Processing sequences in {n_chunks} chunks of {self.max_seqs_len} "
                 "sequences."
