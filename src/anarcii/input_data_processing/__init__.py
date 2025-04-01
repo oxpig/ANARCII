@@ -8,8 +8,8 @@ from itertools import chain
 from pathlib import Path
 from typing import TypeAlias
 
-import gemmi
 import torch
+from gemmi import FastaSeq, Structure, read_pir_or_fasta, read_structure
 
 # Valid user input types.
 Input: TypeAlias = (
@@ -24,8 +24,16 @@ gz_suffixes = {".gz", ".z"}
 fasta_suffixes = {".fasta", ".fas", ".fsa", ".fa", ".faa", ".mpfa"}
 # Supported PIR file suffixes.
 pir_suffixes = {".pir", ".nbrf", ".ali"}
+# Supported PDB file suffixes.
+pdb_suffixes = {".pdb", ".ent"}
+# Supported PDBx/mmCIF file suffixes.
+mmcif_suffixes = {".cif", ".mmcif"}
+# Supported PDBx/mmJSON file suffixes.
+mmjson_suffixes = {".json", ".mmjson"}
 
-supported_extensions = fasta_suffixes | pir_suffixes
+supported_extensions = (
+    fasta_suffixes | pir_suffixes | pdb_suffixes | mmcif_suffixes | mmjson_suffixes
+)
 
 paired_sequence_delimiters = r"-\/"
 split_pattern = paired_sequence_delimiters.replace("\\", r"\\")
@@ -39,6 +47,9 @@ def file_input(path: Path) -> dict[str, str]:
     Supported file formats are:
     * FASTA (.fasta, .fas, .fa, .faa, .mpfa and their gzipped equivalents).
     * NBRF/PIR (.pir, .nbrf, .ali and their gzipped equivalents).
+    * PDBx/mmCIF (.cif, .mmcif and their gzipped equivalents).
+    * PDBx/mmJSON (.json, .mmjson and their gzipped equivalents).
+    * PDB (.pdb, .ent and their gzippped equivalents).
 
     Args:
         path (pathlib.Path): Path to the input file.
@@ -50,9 +61,16 @@ def file_input(path: Path) -> dict[str, str]:
     """
     if (fasta_suffixes | pir_suffixes).intersection(path.suffixes):
         with gzip.open(path, "rt") if path.suffix in gz_suffixes else open(path) as f:
-            entries: list[gemmi.FastaSeq] = gemmi.read_pir_or_fasta(f.read())
+            entries: list[FastaSeq] = read_pir_or_fasta(f.read())
 
         return {e.header: e.seq for e in entries if e.header and e.seq}
+
+    elif (pdb_suffixes | mmcif_suffixes | mmjson_suffixes).intersection(path.suffixes):
+        structure: Structure = read_structure(str(path), merge_chain_parts=False)
+        # Ensure the chains do not contain missing annotations.
+        # See https://gemmi.readthedocs.io/en/stable/mol.html#reading-any-files.
+        structure.setup_entities()
+        raise NotImplementedError()
 
     else:
         raise ValueError(
@@ -119,9 +137,10 @@ def coerce_input(input_data: Input) -> dict[str, str]:
             # Capture the case of a list of peptide sequences (list[str]), labelling
             # sequentially with 'Sequence 1', 'Sequence 2', etc..
             width = len(str(len(input_data)))
-            return {
+            seqs: dict[str, str] = {
                 f"Sequence {i:0{width}d}": seq for i, seq in enumerate(input_data, 1)
             }
+            return seqs
 
     raise TypeError("Invalid input type.")
 
