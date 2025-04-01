@@ -3,6 +3,7 @@ import json
 import pytest
 
 from anarcii import Anarcii
+from anarcii.utils import from_msgpack_map
 
 
 @pytest.fixture(scope="session")
@@ -19,55 +20,49 @@ def anarcii_model(pytestconfig):
         max_seqs_len=20,
     )
 
-    seqs = pytestconfig.rootdir / "tests" / "data" / "raw_data" / "100_seqs.fa"
+    seqs = pytestconfig.rootpath / "tests" / "data" / "raw_data" / "100_seqs.fa"
 
-    # Seqs must be converted to a str fro some reason...
-    model.number(str(seqs))
+    msg_pack_path = model.number(seqs)
 
-    return model
+    return msg_pack_path
 
 
 def test_files_are_identical(anarcii_model, tmp_path, pytestconfig):
-    expected_file_templates = {
-        "txt": (
-            pytestconfig.rootdir / "tests" / "data/expected_data/batch_expected_1.txt"
-        ),
-        "json": (
-            pytestconfig.rootdir / "tests" / "data/expected_data/batch_expected_1.json"
-        ),
-    }
+    expected_file = (
+        pytestconfig.rootpath / "tests" / "data/expected_data/batch_expected_1.json"
+    )
 
-    # Generate and check both text and json files
-    for filetype in ["txt", "json"]:
-        test_file = tmp_path / f"batch_test_1.{filetype}"
-        expected_file = expected_file_templates[filetype]
+    # read the msgpack file
+    (test,) = from_msgpack_map(anarcii_model)
 
-        if filetype == "txt":
-            anarcii_model.to_text(test_file)
-        else:
-            anarcii_model.to_json(test_file)
+    # Convert the test dict to a list of values
+    test = list(test.values())
 
-        if filetype == "json":
-            with open(expected_file) as f1, open(test_file) as f2:
-                json_expected = json.load(f1)
-                json_test = json.load(f2)
+    with open(expected_file) as f1:
+        expected = json.load(f1)
 
-            # Ensure both lists have the same length
-            assert len(json_expected) == len(json_test), (
-                f"Expected list length {len(json_expected)} but got {len(json_test)}"
-            )
+    # Ensure both lists have the same length
+    assert len(expected) == len(test), (
+        f"Expected list length {len(expected)} but got {len(expected)}"
+    )
 
-            # Iterate over both lists concurrently
-            for expected_item, test_item in zip(json_expected, json_test):
-                expected_number, expected_data = expected_item
-                test_number, test_data = test_item
+    # Iterate over both lists concurrently
+    for expected_item, test_item in zip(expected, test):
+        expected_number, expected_data = expected_item
+        test_number, test_data = test_item["numbering"], test_item
 
-                assert expected_number == test_number, (
-                    f"Numbering for {expected_data['query_name']} is different! "
-                    f"Expected: {expected_number}, Got: {test_number}"
-                )
-                reference = pytest.approx(expected_data["score"], abs=0.5)
-                assert test_data["score"] == reference, (
-                    f"Scores differ more than 0.5 for {expected_data['query_name']}! "
-                    f"Expected: {expected_data['score']}, Got: {test_data['score']}"
-                )
+        # The json files currently drop all tuples, so we need to undo this.
+        # Tuple rebuild.
+
+        # Must be a tuple to be in line with msgpack outputs
+        expected_number = tuple(((x[0][0], x[0][1]), x[1]) for x in expected_number)
+
+        assert expected_number == test_number, (
+            f"Numbering for {expected_data['query_name']} is different! "
+            f"Expected: {expected_number}, Got: {test_number}"
+        )
+        reference = pytest.approx(expected_data["score"], abs=0.5)
+        assert test_data["score"] == reference, (
+            f"Scores differ more than 0.5 for {expected_data['query_name']}! "
+            f"Expected: {expected_data['score']}, Got: {test_data['score']}"
+        )

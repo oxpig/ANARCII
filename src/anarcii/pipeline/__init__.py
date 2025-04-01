@@ -94,7 +94,7 @@ class Anarcii:
         batch_size: int = 32,
         cpu: bool = False,
         ncpu: int = -1,
-        output_format: str = "simple",  # legacy for old ANARCI
+        legacy_format: bool = False,  # legacy for old ANARCI
         verbose: bool = False,
         max_seqs_len=1024 * 100,
     ):
@@ -106,7 +106,7 @@ class Anarcii:
         self.cpu = cpu
         self.max_seqs_len = max_seqs_len
 
-        self.output_format = output_format.lower()
+        self.legacy_format = legacy_format
 
         self._last_numbered_output = None
         self._serialised_output = None
@@ -143,11 +143,14 @@ class Anarcii:
         # If there is more than one chunk, we will need to serialise the output.
         if serialise := n_seqs > self.max_seqs_len:
             self._serialised_output = pathlib.Path(f"anarcii-{uuid.uuid4()}.msgpack")
-            if self.verbose:
-                print(
-                    f"Serialising output to {self._serialised_output} as the number of "
-                    f"sequences exceeds the serialisation limit of {self.max_seqs_len}."
-                )
+
+            # If we serialise we always need to tell the user.
+            print(
+                "\n",
+                f"Serialising output to {self._serialised_output} as the number of "
+                f"sequences exceeds the serialisation limit of {self.max_seqs_len}.\n",
+            )
+
             packer = msgpack.Packer()
             # Initialise a MessagePack map with the expected number of sequences, so we
             # can later stream the key value pairs, rather than needing to create a
@@ -199,11 +202,14 @@ class Anarcii:
             end = time.time()
             print(f"Numbered {n_seqs} seqs in {format_timediff(end - begin)}.\n")
 
-        return convert_output(
-            ls=self._last_numbered_output,
-            format=self.output_format,
-            verbose=self.verbose,
-        )
+        if serialise:
+            return self._serialised_output
+        else:
+            return convert_output(
+                dt=self._last_numbered_output,
+                legacy_format=self.legacy_format,
+                verbose=self.verbose,
+            )
 
     def to_scheme(self, scheme="imgt"):
         # Check if there's output to save

@@ -1,9 +1,6 @@
 # FIXME:  Refactor for new numbered sequence data structure.
-def convert_output(ls, format, verbose):
-    if format == "simple":
-        return ls
-
-    elif format == "legacy":
+def convert_output(dt, legacy_format, verbose):
+    if legacy_format:
         if verbose:
             print(
                 "Converting to legacy format. Three separate lists. \n",
@@ -12,19 +9,27 @@ def convert_output(ls, format, verbose):
             )
 
         numbering, alignment_details, hit_tables = [], [], []
-        for x in ls:
-            if x[0]:
-                numbering.append([(x[0], x[1]["query_start"], x[1]["query_end"])])
+        for key, value in dt.items():
+            if value["numbering"]:
+                numbering.append(
+                    [(value["numbering"], value["query_start"], value["query_end"])]
+                )
             else:
                 numbering.append(None)
 
             # Changes for Ody needed here.
-            new_dict = x[1]
+            new_dict = {}
             new_dict["species"] = None
             new_dict["scheme"] = "imgt"
+            new_dict["query_name"] = key
+            new_dict["query_start"] = value["query_start"]
+            new_dict["end"] = value["query_end"]
 
             alignment_details.append([new_dict])
 
             hit_tables.append(None)
 
         return numbering, alignment_details, hit_tables
+
+    else:
+        return dt

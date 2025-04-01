@@ -15,77 +15,52 @@ def anarcii_model(pytestconfig):
         mode="accuracy",
         verbose=False,
     )
-    seqs = pytestconfig.rootdir / "tests" / "data" / "raw_data" / "shark_check.fa"
+    seqs = pytestconfig.rootpath / "tests" / "data" / "raw_data" / "shark_check.fa"
 
-    # Seqs must be converted to a str fro some reason...
-    model.number(str(seqs))
+    results = model.number(seqs)
 
-    return model
+    return model, results  # Return both model and results
 
 
-@pytest.mark.parametrize(
-    "scheme",
-    [
-        "default",
-    ],
-)
-def test_files_are_identical(anarcii_model, tmp_path, scheme, pytestconfig):
-    suffix = "" if scheme == "default" else f"_{scheme}"
+def test_files_are_identical(anarcii_model, tmp_path, pytestconfig):
+    suffix = ""
 
-    expected_file_templates = {
-        "txt": (
-            pytestconfig.rootdir
-            / "tests"
-            / "data"
-            / "expected_data"
-            / f"shark{suffix}_expected_1.txt"
-        ),
-        "json": (
-            pytestconfig.rootdir
-            / "tests"
-            / "data"
-            / "expected_data"
-            / f"shark{suffix}_expected_1.json"
-        ),
-    }
+    expected_file = (
+        pytestconfig.rootpath
+        / "tests"
+        / "data"
+        / "expected_data"
+        / f"shark{suffix}_expected_1.json"
+    )
 
-    suffix = "" if scheme == "default" else f"_{scheme}"
+    _, results = anarcii_model  # Unpack results from the fixture
 
-    # Switch scheme if necessary (skip for "default")
-    if scheme != "default":
-        anarcii_model.to_scheme(scheme)
+    # Convert the results dict to a list of values
+    test = list(results.values())
 
-    # Generate and check both text and json files
-    for filetype in ["txt", "json"]:
-        test_file = tmp_path / f"shark{suffix}_test_1.{filetype}"
-        expected_file = expected_file_templates[filetype]
+    with open(expected_file) as f1:
+        expected = json.load(f1)
 
-        if filetype == "txt":
-            anarcii_model.to_text(test_file)
-        else:
-            anarcii_model.to_json(test_file)
+    # Ensure both lists have the same length
+    assert len(expected) == len(test), (
+        f"Expected list length {len(expected)} but got {len(test)}"
+    )
 
-        if filetype == "json":
-            with open(expected_file) as f1, open(test_file) as f2:
-                json_expected = json.load(f1)
-                json_test = json.load(f2)
+    # Iterate over both lists concurrently
+    for expected_item, test_item in zip(expected, test):
+        expected_number, expected_data = expected_item
+        test_number, test_data = test_item["numbering"], test_item
 
-            # Ensure both lists have the same length
-            assert len(json_expected) == len(json_test), (
-                f"Expected list length {len(json_expected)} but got {len(json_test)}"
-            )
+        # The json files currently drop all tuples, so we need to undo this.
+        # Tuple rebuild.
+        expected_number = [((x[0][0], x[0][1]), x[1]) for x in expected_number]
 
-            # Iterate over both lists concurrently
-            for expected_item, test_item in zip(json_expected, json_test):
-                expected_number, expected_data = expected_item
-                test_number, test_data = test_item
-
-                assert expected_number == test_number, (
-                    f"Numbering for {expected_data['query_name']} is different! "
-                    f"Expected: {expected_number}, Got: {test_number}"
-                )
-                reference = pytest.approx(expected_data["score"], abs=0.5)
-                assert test_data["score"] == reference, (
-                    f"Scores differ more than 0.5 for {expected_data['query_name']}! "
-                    f"Expected: {expected_data['score']}, Got: {test_data['score']}"
-                )
+        assert expected_number == test_number, (
+            f"Numbering for {expected_data['query_name']} is different! "
+            f"Expected: {expected_number}, Got: {test_number}"
+        )
+        reference = pytest.approx(expected_data["score"], abs=0.5)
+        assert test_data["score"] == reference, (
+            f"Scores differ more than 0.5 for {expected_data['query_name']}! "
+            f"Expected: {expected_data['score']}, Got: {test_data['score']}"
+        )
