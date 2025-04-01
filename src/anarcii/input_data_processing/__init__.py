@@ -127,7 +127,7 @@ def coerce_input(input_data: Input) -> dict[str, str]:
 
 def split_sequence(
     name: str, sequence: str, verbose: bool = False
-) -> Iterator[tuple[str, str]] | tuple[tuple[str, str]]:
+) -> Iterator[tuple[str, str]]:
     """
     Split a sequence string on any of several standard delimiter characters.
 
@@ -158,12 +158,11 @@ def split_sequence(
         split_parts = re.split(split_pattern, sequence)
         width = len(str(len(split_parts)))
         # Create named parts
-        return (
-            (f"{name}-{i:0{width}d}", part) for i, part in enumerate(split_parts, 1)
-        )
+        for i, part in enumerate(split_parts, 1):
+            yield f"{name}-{i:0{width}d}", part
     else:
-        # If no delimiters, return the sequence as-is.
-        return ((name, sequence),)
+        # If no delimiters, yield the sequence as is.
+        yield name, sequence
 
 
 def split_sequences(seqs: dict[str, str], verbose: bool = False) -> dict[str, str]:
