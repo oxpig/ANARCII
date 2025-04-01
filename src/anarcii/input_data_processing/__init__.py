@@ -116,7 +116,7 @@ def coerce_input(input_data: Input) -> dict[str, str]:
 
         if isinstance(input_data, list):
             # Capture the case of a list of peptide sequences (list[str]), labelling
-            # sequentially with `sequence-1`, `sequence-2`, etc..
+            # sequentially with 'Sequence 1', 'Sequence 2', etc..
             width = len(str(len(input_data)))
             return {
                 f"Sequence {i:0{width}d}": seq for i, seq in enumerate(input_data, 1)
