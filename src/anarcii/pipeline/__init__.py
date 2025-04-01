@@ -139,6 +139,9 @@ class Anarcii:
             )
             begin = time.time()
 
+        if self.seq_type == "unknown":
+            classifii_seqs = Classifii(batch_size=self.batch_size, device=self.device)
+
         # If there is more than one chunk, we will need to serialise the output.
         if serialise := n_seqs > self.max_seqs_len:
             self._serialised_output = pathlib.Path(f"anarcii-{uuid.uuid4()}.msgpack")
@@ -156,9 +159,6 @@ class Anarcii:
             # separate MessagePack map for each chunk.
             with self._serialised_output.open("wb") as f:
                 f.write(packer.pack_map_header(n_seqs))
-
-        if self.seq_type == "unknown":
-            classifii_seqs = Classifii(batch_size=self.batch_size, device=self.device)
 
         for i, chunk in enumerate(batched(seqs.items(), self.max_seqs_len), 1):
             chunk = dict(chunk)
