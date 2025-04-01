@@ -190,10 +190,9 @@ class Anarcii:
             if serialise:
                 # Stream the key-value pairs of the results dict to the previously
                 # initialised MessagePack map.
-                items_stream = chain.from_iterable(numbered.items())
-                packed_items = b"".join(map(packer.pack, items_stream))
                 with self._serialised_output.open("ab") as f:
-                    f.write(packed_items)
+                    for item in chain.from_iterable(numbered.items()):
+                        f.write(packer.pack(item))
             else:
                 self._last_numbered_output = numbered
 
