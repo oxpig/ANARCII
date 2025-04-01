@@ -58,7 +58,8 @@ def file_input(path: Path) -> dict[str, str]:
         raise ValueError(
             f"{path.name} has an unsupported file extension.  These are supported:\n"
             f"{', '.join(sorted(supported_extensions))}\n"
-            "and gzipped equivalents (*.gz, *.z)."
+            "and gzipped equivalents "
+            f"({', '.join(f'*{gzs}' for gzs in sorted(gz_suffixes))})."
         )
 
 
