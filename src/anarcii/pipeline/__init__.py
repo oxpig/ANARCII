@@ -126,7 +126,8 @@ class Anarcii:
         self.print_initial_configuration()
 
     def number(self, seqs: Input):
-        seqs: dict[str, str] = split_sequences(coerce_input(seqs), self.verbose)
+        seqs, structure = coerce_input(seqs)
+        seqs: dict[str, str] = split_sequences(seqs, self.verbose)
         n_seqs = len(seqs)
 
         if self.verbose:

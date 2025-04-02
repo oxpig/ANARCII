@@ -79,7 +79,8 @@ class TestFiles:
     @pytest.mark.parametrize("suffix", fasta_suffixes | pir_suffixes)
     def test_valid_empties(self, empty_input_files, suffix, compression):
         """Check that correctly formatted empty files are read as empty dictionaries."""
-        assert file_input(empty_input_files / f"foo{suffix}{compression or ''}") == {}
+        filename = f"foo{suffix}{compression or ''}"
+        assert file_input(empty_input_files / filename) == ({}, None)
 
     def test_invalid_extension(self, empty_input_files):
         """Check that an invalid file extension raises a ValueError."""
@@ -90,7 +91,7 @@ class TestFiles:
 @pytest.mark.parametrize("input_data, expected", cases.values(), ids=cases)
 def test_coerce_input(input_data, expected):
     """Check that non-file input data is coerced into the expected format."""
-    assert coerce_input(input_data) == expected
+    assert coerce_input(input_data) == (expected, None)
 
 
 def test_invalid_input_type():
@@ -104,11 +105,12 @@ def test_invalid_input_type():
 @pytest.mark.parametrize("input_function", [file_input, coerce_input])
 def test_file_input(sample_fasta, input_function):
     """Check that the first sequecence in a valid FASTA file is read correctly."""
-    seqs = input_function(sample_fasta)
+    seqs, structure = input_function(sample_fasta)
     assert seqs["sequence0"] == (
         "SETLSLTCSVYGASISNSNSYWGWIRQPPGKRLEWLGSIYDSGSTSYNPSLSS"
         "RVTISVDTSKNQVSLRLNSVTAADTGVYYCARHRDPPGSRWIFYYYYMDLWG"
     )
+    assert structure is None
 
 
 def test_file_input_str_or_path(sample_fasta):

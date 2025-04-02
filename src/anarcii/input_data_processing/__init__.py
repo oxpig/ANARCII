@@ -40,7 +40,7 @@ split_pattern = paired_sequence_delimiters.replace("\\", r"\\")
 split_pattern = re.compile(rf"[{split_pattern}]")
 
 
-def file_input(path: Path) -> dict[str, str]:
+def file_input(path: Path) -> tuple[dict[str, str], Structure | None]:
     """
     Extract peptide sequence strings from a file.
 
@@ -55,15 +55,18 @@ def file_input(path: Path) -> dict[str, str]:
         path (pathlib.Path): Path to the input file.
 
     Returns:
-        dict[str, str]: The values are sequence strings and the keys are
-                        names/descriptions, which are assumed to be unique in the input
-                        file.
+        dict[str, str]:   The values are sequence strings and the keys are
+                          names/descriptions, which are assumed to be unique in the
+                          input file.
+        gemmi.Structure:  If the input file is PDBx/mmCIF, PDBx/mmJSON or PDB, this
+                          contains the structure model and all associated metadata.
+                          Otherwise, the return value is `None`.
     """
     if (fasta_suffixes | pir_suffixes).intersection(path.suffixes):
         with gzip.open(path, "rt") if path.suffix in gz_suffixes else open(path) as f:
             entries: list[FastaSeq] = read_pir_or_fasta(f.read())
 
-        return {e.header: e.seq for e in entries if e.header and e.seq}
+        return {e.header: e.seq for e in entries if e.header and e.seq}, None
 
     elif (pdb_suffixes | mmcif_suffixes | mmjson_suffixes).intersection(path.suffixes):
         structure: Structure = read_structure(str(path), merge_chain_parts=False)
@@ -81,7 +84,7 @@ def file_input(path: Path) -> dict[str, str]:
         )
 
 
-def coerce_input(input_data: Input) -> dict[str, str]:
+def coerce_input(input_data: Input) -> tuple[dict[str, str], Structure | None]:
     """
     Coerce varied input sequence data formats into a dictionary.
 
@@ -103,13 +106,16 @@ def coerce_input(input_data: Input) -> dict[str, str]:
         TypeError: An unrecognised type of input data was provided.
 
     Returns:
-        dict[str, str]: The values are sequence strings and the keys are names, which
-                        are generated if not provided.
+        dict[str, str]:   The values are sequence strings and the keys are names (chain
+                          IDs), which are generated if not provided.
+        gemmi.Structure:  If the input file is PDBx/mmCIF, PDBx/mmJSON or PDB, this
+                          contains the structure model and all associated metadata.
+                          Otherwise, the return value is `None`
     """
     try:
         # Capture the cases list[tuple[str, str]] | dict[str, str],
         # containing name-sequence pairs.
-        return dict(input_data)
+        return dict(input_data), None
 
     # The only non-iterable sub-type of Input is pathlib.Path.
     except TypeError:
@@ -126,12 +132,12 @@ def coerce_input(input_data: Input) -> dict[str, str]:
                 return file_input(path)
 
             # Capture the case of a single peptide sequence (str).
-            return {"Sequence": input_data}
+            return {"Sequence": input_data}, None
 
         if isinstance(input_data, tuple):
             # Capture the case of a single name-sequence pair (tuple[str, str]).
             name, sequence = input_data
-            return {name: sequence}
+            return {name: sequence}, None
 
         if isinstance(input_data, list):
             # Capture the case of a list of peptide sequences (list[str]), labelling
@@ -140,7 +146,7 @@ def coerce_input(input_data: Input) -> dict[str, str]:
             seqs: dict[str, str] = {
                 f"Sequence {i:0{width}d}": seq for i, seq in enumerate(input_data, 1)
             }
-            return seqs
+            return seqs, None
 
     raise TypeError("Invalid input type.")
 
