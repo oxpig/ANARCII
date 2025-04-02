@@ -15,6 +15,7 @@ from gemmi import FastaSeq, Structure, read_pir_or_fasta, read_structure
 Input: TypeAlias = (
     Path | str | tuple[str, str] | list[str | tuple[str, str]] | dict[str, str]
 )
+SequenceDict: TypeAlias = dict[str | tuple[int, str], str]
 # A TokenisedSequence is a torch.Tensor of dtype np.int32.
 TokenisedSequence: TypeAlias = torch.Tensor
 
@@ -40,7 +41,7 @@ split_pattern = paired_sequence_delimiters.replace("\\", r"\\")
 split_pattern = re.compile(rf"[{split_pattern}]")
 
 
-def file_input(path: Path) -> tuple[dict[str, str], Structure | None]:
+def file_input(path: Path) -> tuple[SequenceDict, Structure | None]:
     """
     Extract peptide sequence strings from a file.
 
@@ -55,12 +56,12 @@ def file_input(path: Path) -> tuple[dict[str, str], Structure | None]:
         path (pathlib.Path): Path to the input file.
 
     Returns:
-        dict[str, str]:   The values are sequence strings and the keys are
-                          names/descriptions, which are assumed to be unique in the
-                          input file.
-        gemmi.Structure:  If the input file is PDBx/mmCIF, PDBx/mmJSON or PDB, this
-                          contains the structure model and all associated metadata.
-                          Otherwise, the return value is `None`.
+        * A dictionary with sequence strings as values.  If the input is in PDBx or PDB
+          format, the keys are tuples of (model index, chain ID).  Otherwise, the keys
+          are name strings, which are generated if not provided.
+        * A `gemmi.Structure` object, if the input file is PDBx/mmCIF, PDBx/mmJSON or
+          PDB, containing the structure model and all associated metadata.  For other
+          input formats, this value is `None`.
     """
     if (fasta_suffixes | pir_suffixes).intersection(path.suffixes):
         with gzip.open(path, "rt") if path.suffix in gz_suffixes else open(path) as f:
@@ -69,11 +70,17 @@ def file_input(path: Path) -> tuple[dict[str, str], Structure | None]:
         return {e.header: e.seq for e in entries if e.header and e.seq}, None
 
     elif (pdb_suffixes | mmcif_suffixes | mmjson_suffixes).intersection(path.suffixes):
-        structure: Structure = read_structure(str(path), merge_chain_parts=False)
+        structure: Structure = read_structure(str(path))
         # Ensure the chains do not contain missing annotations.
-        # See https://gemmi.readthedocs.io/en/stable/mol.html#reading-any-files.
+        # See https://gemmi.readthedocs.io/en/stable/mol.html#entity.
         structure.setup_entities()
-        raise NotImplementedError()
+
+        seqs: dict[tuple[int, str], str] = {
+            (i, chain.name): chain.get_polymer().make_one_letter_sequence()
+            for i, model in enumerate(structure)
+            for chain in model
+        }
+        return seqs, structure
 
     else:
         raise ValueError(
@@ -84,7 +91,7 @@ def file_input(path: Path) -> tuple[dict[str, str], Structure | None]:
         )
 
 
-def coerce_input(input_data: Input) -> tuple[dict[str, str], Structure | None]:
+def coerce_input(input_data: Input) -> tuple[SequenceDict, Structure | None]:
     """
     Coerce varied input sequence data formats into a dictionary.
 
@@ -106,11 +113,12 @@ def coerce_input(input_data: Input) -> tuple[dict[str, str], Structure | None]:
         TypeError: An unrecognised type of input data was provided.
 
     Returns:
-        dict[str, str]:   The values are sequence strings and the keys are names (chain
-                          IDs), which are generated if not provided.
-        gemmi.Structure:  If the input file is PDBx/mmCIF, PDBx/mmJSON or PDB, this
-                          contains the structure model and all associated metadata.
-                          Otherwise, the return value is `None`
+        * A dictionary with sequence strings as values.  If the input is a file in PDBx
+          or PDB format, the keys are tuples of (model index, chain ID).  Otherwise,
+          the keys are name strings, which are generated if not provided.
+        * A `gemmi.Structure` object, if the input file is PDBx/mmCIF, PDBx/mmJSON or
+          PDB, containing the structure model and all associated metadata.  For other
+          input formats, this value is `None`.
     """
     try:
         # Capture the cases list[tuple[str, str]] | dict[str, str],

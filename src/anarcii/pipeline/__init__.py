@@ -127,7 +127,11 @@ class Anarcii:
 
     def number(self, seqs: Input):
         seqs, structure = coerce_input(seqs)
-        seqs: dict[str, str] = split_sequences(seqs, self.verbose)
+        if not structure:
+            # Do not split sequences on delimiter characters if the input was in PDBx or
+            # PDB format.  We assume that PDBx/PDB files will have chains identified
+            # individually.
+            seqs: dict[str, str] = split_sequences(seqs, self.verbose)
         n_seqs = len(seqs)
 
         if self.verbose:
