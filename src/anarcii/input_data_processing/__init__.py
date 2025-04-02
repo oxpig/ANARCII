@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TypeAlias
 
 import torch
-from gemmi import FastaSeq, Structure, read_pir_or_fasta, read_structure
+from gemmi import Chain, FastaSeq, Structure, read_pir_or_fasta, read_structure
 
 # Valid user input types.
 Input: TypeAlias = (
@@ -39,6 +39,22 @@ supported_extensions = (
 paired_sequence_delimiters = r"-\/"
 split_pattern = paired_sequence_delimiters.replace("\\", r"\\")
 split_pattern = re.compile(rf"[{split_pattern}]")
+
+
+def polymer_seq(chain: Chain) -> str:
+    """
+    Extract the single-letter peptide sequence string from a `gemmi.Chain` object.
+
+    Remove any `-` characters that Gemmi adds to signify suspected missing residues on
+    the basis of a simple analysis of the structural data.  Simply override that check.
+
+    Args:
+        chain:  A PDBx or PDB chain object.
+
+    Returns:
+        A string representing the chain's polypeptide sequence, in one-letter notation.
+    """
+    return chain.get_polymer().make_one_letter_sequence().replace("-", "")
 
 
 def file_input(path: Path) -> tuple[SequenceDict, Structure | None]:
@@ -76,7 +92,7 @@ def file_input(path: Path) -> tuple[SequenceDict, Structure | None]:
         structure.setup_entities()
 
         seqs: dict[tuple[int, str], str] = {
-            (i, chain.name): chain.get_polymer().make_one_letter_sequence()
+            (i, chain.name): polymer_seq(chain)
             for i, model in enumerate(structure)
             for chain in model
         }
