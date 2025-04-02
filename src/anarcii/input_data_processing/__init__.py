@@ -91,11 +91,12 @@ def file_input(path: Path) -> tuple[SequenceDict, Structure | None]:
         # See https://gemmi.readthedocs.io/en/stable/mol.html#entity.
         structure.setup_entities()
 
-        seqs: dict[tuple[int, str], str] = {
-            (i, chain.name): polymer_seq(chain)
-            for i, model in enumerate(structure)
-            for chain in model
-        }
+        seqs: dict[tuple[int, str], str] = {}
+        for i, model in enumerate(structure):
+            for residue_chain in model:
+                if seq := polymer_seq(residue_chain):
+                    seqs[(i, residue_chain.name)] = seq
+
         return seqs, structure
 
     else:
