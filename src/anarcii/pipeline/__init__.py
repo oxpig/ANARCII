@@ -13,7 +13,7 @@ from anarcii.inference.model_runner import ModelRunner
 from anarcii.inference.window_selector import WindowFinder
 from anarcii.input_data_processing import Input, coerce_input, split_sequences
 from anarcii.input_data_processing.sequences import SequenceProcessor
-from anarcii.output_data_processing.convert_to_legacy_format import convert_output
+from anarcii.output_data_processing.convert_to_legacy_format import legacy_output
 from anarcii.output_data_processing.schemes import convert_number_scheme
 from anarcii.pipeline.configuration import configure_cpus, configure_device
 
@@ -106,8 +106,6 @@ class Anarcii:
         self.cpu = cpu
         self.max_seqs_len = max_seqs_len
 
-        self.legacy_format = legacy_format
-
         self._last_numbered_output = None
         self._serialised_output = None
         # Has a conversion to a new number scheme occured?
@@ -125,7 +123,7 @@ class Anarcii:
         self.device = configure_device(self.cpu, self.ncpu)
         self.print_initial_configuration()
 
-    def number(self, seqs: Input):
+    def number(self, seqs: Input, legacy_format=False):
         seqs, structure = coerce_input(seqs)
         if not structure:
             # Do not split sequences on delimiter characters if the input was in PDBx or
@@ -205,14 +203,10 @@ class Anarcii:
             end = time.time()
             print(f"Numbered {n_seqs} seqs in {format_timediff(end - begin)}.\n")
 
-        if serialise:
-            return self._serialised_output
+        if legacy_format and not serialise:
+            return legacy_output(self._last_numbered_output, verbose=self.verbose)
         else:
-            return convert_output(
-                dt=self._last_numbered_output,
-                legacy_format=self.legacy_format,
-                verbose=self.verbose,
-            )
+            return self._last_numbered_output
 
     def to_scheme(self, scheme="imgt"):
         # Check if there's output to save
