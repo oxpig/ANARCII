@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import pathlib
 import sys
 import time
 import uuid
 from itertools import chain
+from pathlib import Path
 
 import msgpack
 
@@ -106,8 +106,7 @@ class Anarcii:
         self.cpu = cpu
         self.max_seqs_len = max_seqs_len
 
-        self._last_numbered_output = None
-        self._serialised_output = None
+        self._last_numbered_output: dict | Path | None = None
         # Has a conversion to a new number scheme occured?
         self._last_converted_output = None
         self._alt_scheme = None
@@ -147,12 +146,13 @@ class Anarcii:
 
         # If there is more than one chunk, we will need to serialise the output.
         if serialise := n_seqs > self.max_seqs_len:
-            self._serialised_output = pathlib.Path(f"anarcii-{uuid.uuid4()}.msgpack")
+            id = uuid.uuid4()
+            self._last_numbered_output = Path(f"anarcii-{id}-imgt.msgpack")
 
             # If we serialise we always need to tell the user.
             print(
                 "\n",
-                f"Serialising output to {self._serialised_output} as the number of "
+                f"Serialising output to {self._last_numbered_output} as the number of "
                 f"sequences exceeds the serialisation limit of {self.max_seqs_len}.\n",
             )
 
@@ -160,7 +160,7 @@ class Anarcii:
             # Initialise a MessagePack map with the expected number of sequences, so we
             # can later stream the key value pairs, rather than needing to create a
             # separate MessagePack map for each chunk.
-            with self._serialised_output.open("wb") as f:
+            with self._last_numbered_output.open("wb") as f:
                 f.write(packer.pack_map_header(n_seqs))
 
         for i, chunk in enumerate(batched(seqs.items(), self.max_seqs_len), 1):
@@ -193,7 +193,7 @@ class Anarcii:
             if serialise:
                 # Stream the key-value pairs of the results dict to the previously
                 # initialised MessagePack map.
-                with self._serialised_output.open("ab") as f:
+                with self._last_numbered_output.open("ab") as f:
                     for item in chain.from_iterable(numbered.items()):
                         f.write(packer.pack(item))
             else:
