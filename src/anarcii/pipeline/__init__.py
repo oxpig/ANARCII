@@ -3,9 +3,10 @@ from __future__ import annotations
 import sys
 import time
 import uuid
-from itertools import chain
+from itertools import chain, repeat
 from pathlib import Path
 
+import gemmi
 import msgpack
 
 from anarcii.classifii import Classifii
@@ -190,6 +191,12 @@ class Anarcii:
             # Restore the original input order to the numbered sequences.
             numbered = {key: numbered[key] for key in chunk}
 
+            # If the sequences came from a PDB(x) file, renumber them in the associated
+            # data structure.
+            if structure:
+                for (model_index, chain_id), numbering in numbered.items():
+                    renumber_pdbx(structure, model_index, chain_id, numbering)
+
             if serialise:
                 # Stream the key-value pairs of the results dict to the previously
                 # initialised MessagePack map.
@@ -236,3 +243,40 @@ class Anarcii:
 
         # Perform numbering.
         return model(tokenised_seqs, offsets)
+
+
+def renumber_pdbx(
+    structure: gemmi.Structure, model_index: int, chain_id: str, numbered: dict
+) -> None:
+    """
+    Write residue numbers from an ANARCII-numbered sequence to a Gemmi structure.
+
+    Args:
+        structure:    Representation of a PDBx or PDB file.
+        model_index:  Index of the relevant model in the file.
+        chain_id:     ID of the relevant chain in the model.
+        numbering:    ANARCII model output for a given sequence.
+    """
+    # Get the sequence indicated by the model index and chain ID.
+    polymer: gemmi.ResidueSpan = structure[model_index][chain_id].get_polymer()
+    # Drop gap marks ('-') from the numbered sequence.  They do not exist in the file.
+    no_gaps = ((num, res) for num, res in numbered["numbering"] if res != "-")
+    # Get the residue numbering and one-letter peptide sequence as separate tuples.
+    numbers, sequence = zip(*no_gaps)
+    # Find the number of the first numbered residue.
+    (first_number, _), *_ = numbers
+
+    try:
+        # Get the numbering offset, by matching the numbered sequence to the original...
+        offset: int = polymer.make_one_letter_sequence().index("".join(sequence))
+    except ValueError:
+        # ... or by falling back on the model's reported start index.
+        offset: int = numbered["query_start"]
+
+    # Generate numbers for the residues in the file that precede the numbered sequence.
+    backfill = zip(range(first_number - offset, first_number), repeat(" "))
+    numbers = chain(backfill, numbers)
+
+    # Residue by residue, write the new numbering.
+    for residue, number in zip(polymer, numbers):
+        residue.seqid = gemmi.SeqId(*number)
