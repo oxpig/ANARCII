@@ -42,6 +42,12 @@ else:
             yield batch
 
 
+# Record all groups in mmCIF output, including _atom_site.auth_atom_id and .auth_comp_id
+mmcif_output_groups = gemmi.MmcifOutputGroups(True, auth_all=True)
+# We don't modify ATOM serial numbers and CONECT records.  Preserve them in PDB output.
+pdb_write_options = gemmi.PdbWriteOptions(preserve_serial=True, conect_records=True)
+
+
 def format_timediff(timediff: int | float) -> str:
     """
     Format a time difference in seconds as hours, minutes and seconds strings.
@@ -210,6 +216,10 @@ class Anarcii:
             end = time.time()
             print(f"Numbered {n_seqs} seqs in {format_timediff(end - begin)}.\n")
 
+        # If our sequences came from a PDBx or PDB file, write a renumbered version.
+        if structure:
+            write_pdbx_file(structure)
+
         if legacy_format and not serialise:
             return legacy_output(self._last_numbered_output, verbose=self.verbose)
         else:
@@ -280,3 +290,30 @@ def renumber_pdbx(
     # Residue by residue, write the new numbering.
     for residue, number in zip(polymer, numbers):
         residue.seqid = gemmi.SeqId(*number)
+
+
+def write_pdbx_file(structure: gemmi.Structure, scheme="imgt") -> None:
+    """
+    Write a Gemmi PDBx structure to file.
+
+    Use the same format as the source file, as determined by `structure.input_format`.
+    Label the file with `structure.name` and the name of the numbering scheme used.
+
+    Args:
+        structure:  Representation of a PDBx or PDB file.
+        scheme:     Numbering scheme used to generate the structure.
+    """
+    stem = f"{structure.name.lower()}-anarcii-{scheme}"
+
+    if structure.input_format is gemmi.CoorFormat.Pdb:
+        structure.write_pdb(f"{stem}.pdb", pdb_write_options)
+
+    else:
+        document = structure.make_mmcif_document(mmcif_output_groups)
+
+        if structure.input_format is gemmi.CoorFormat.Mmcif:
+            document.write_file(f"{stem}.cif")
+
+        elif structure.input_format is gemmi.CoorFormat.Mmjson:
+            with open(f"{stem}.json", "w") as f:
+                f.write(document.as_json(mmjson=True))
