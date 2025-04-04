@@ -402,6 +402,7 @@ class ModelRunner:
                     if len(nums) != len(set(nums)):
                         numbering.append(
                             {
+                                "numbering": None,
                                 "chain_type": "F",
                                 "score": normalized_score,
                                 "query_start": None,
