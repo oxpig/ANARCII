@@ -398,6 +398,14 @@ class ModelRunner:
                     if error_occurred:
                         continue
 
+                    # Assign an end index before entering forwardfill
+                    if not end_index:
+                        end_index = eos_position - 3
+                        # eos_position - 1: Moves to the token before <EOS>,
+                        # excluding the <EOS> marker itself.
+                        # Subtracting an additional 1 for SOS and 1 for CLS:
+                        # Adjusts further to skip over these two tokens.
+
                     ## Check for duplicates
                     if len(nums) != len(set(nums)):
                         numbering.append(
@@ -492,13 +500,6 @@ class ModelRunner:
                         residues = residues + missing_end_residues
 
                         end_index = end_index + len(missing_end_nums)
-
-                    if not end_index:
-                        end_index = eos_position - 3
-                        # eos_position - 1: Moves to the token before <EOS>,
-                        # excluding the <EOS> marker itself.
-                        # Subtracting an additional 1 for SOS and 1 for CLS:
-                        # Adjusts further to skip over these two tokens.
 
                     ### 5D   Perform backfill for missed start of sequence, if missed
                     # numbering
