@@ -400,8 +400,7 @@ class ModelRunner:
 
                     ## Check for duplicates
                     if len(nums) != len(set(nums)):
-                        numbering.append(None)
-                        alignment.append(
+                        numbering.append(
                             {
                                 "chain_type": "F",
                                 "score": normalized_score,
@@ -491,6 +490,8 @@ class ModelRunner:
                         nums = nums + missing_end_nums
                         residues = residues + missing_end_residues
 
+                        end_index = end_index + len(missing_end_nums)
+
                     if not end_index:
                         end_index = eos_position - 3
                         # eos_position - 1: Moves to the token before <EOS>,
@@ -537,7 +538,7 @@ class ModelRunner:
                         residues = list(backfill_residues[-len(vals) :]) + residues
 
                         # Adjust the start index for the backfill
-                        start_index = start_index - len(backfill_residues)
+                        start_index = start_index - len(vals)
 
                     ### 5E Fill in up to 1 (starting IMGT residue) with gaps
                     first_num = int(nums[0][0])  # get first number again - may change
