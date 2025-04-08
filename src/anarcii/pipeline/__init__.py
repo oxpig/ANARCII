@@ -341,7 +341,7 @@ def renumber_pdbx(
     numbers = chain(backward_fill, numbers, forward_fill)
 
     # Residue by residue, write the new numbering.
-    for residue, number in zip(polymer, numbers):
+    for residue, number in zip(structure[model_index][chain_id], numbers):
         residue.seqid = gemmi.SeqId(*number)
 
 
