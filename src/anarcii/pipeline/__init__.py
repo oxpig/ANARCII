@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 import time
 import uuid
-from itertools import chain, repeat
+from itertools import chain, count, repeat
 from pathlib import Path
 
 import gemmi
@@ -274,7 +274,7 @@ def renumber_pdbx(
     # Get the residue numbering and one-letter peptide sequence as separate tuples.
     numbers, sequence = zip(*no_gaps)
     # Find the number of the first numbered residue.
-    (first_number, _), *_ = numbers
+    (first_number, _), *_, (last_number, _) = numbers
 
     try:
         # Get the numbering offset, by matching the numbered sequence to the original...
@@ -284,8 +284,9 @@ def renumber_pdbx(
         offset: int = numbered["query_start"]
 
     # Generate numbers for the residues in the file that precede the numbered sequence.
-    backfill = zip(range(first_number - offset, first_number), repeat(" "))
-    numbers = chain(backfill, numbers)
+    backward_fill = zip(range(first_number - offset, first_number), repeat(" "))
+    forward_fill = zip(count(last_number + 1), repeat(" "))
+    numbers = chain(backward_fill, numbers, forward_fill)
 
     # Residue by residue, write the new numbering.
     for residue, number in zip(polymer, numbers):
