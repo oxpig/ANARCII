@@ -201,7 +201,10 @@ class Anarcii:
             # data structure.
             if structure:
                 for (model_index, chain_id), numbering in numbered.items():
-                    renumber_pdbx(structure, model_index, chain_id, numbering)
+                    if self.verbose:
+                        print(f"PDBx model index, chain ID: {model_index}, {chain_id}")
+                    if numbered_sequence_qa(numbering, self.verbose):
+                        renumber_pdbx(structure, model_index, chain_id, numbering)
 
             if serialise:
                 # Stream the key-value pairs of the results dict to the previously
@@ -253,6 +256,55 @@ class Anarcii:
 
         # Perform numbering.
         return model(tokenised_seqs, offsets)
+
+
+def numbered_sequence_qa(numbered: dict, verbose=False) -> bool:
+    """
+    Quality assurance check for an ANARCII-numbered sequence.
+
+    Given an ANARCII-numbered sequence, check whether it is 'good' according to the
+    following criteria:
+      1. The assigned chain type is either 'HLK' (antibody) or 'ABDG' (TCR); and
+      2. Either of the following criteria are met:
+         a) The numbering model score is at least 19.
+         b) The sequence contains conserved residues at the following IMGT positions:
+            - 23: C
+            - 41: W
+            - 104: C
+
+    Args:
+        numbered:  An ANARCII-numbered seuence and associated metadata.
+
+    Returns:
+        bool:  True if the criteria are met.
+    """
+    if numbered["chain_type"] in (
+        "HLK"  # Antibody
+        "ABDG"  # TCR
+    ):
+        if verbose:
+            print(
+                f"ANARCII chain type (score): {numbered['chain_type']} "
+                f"({numbered['score']})\n",
+                f"Sequence length: {len(numbered['numbering'])}\n",
+                f"Sequence: {numbered['numbering']}",
+            )
+        if numbered["score"] >= 19:
+            return True
+        else:
+            conserved_residues = {
+                (("23", " "), "C"),
+                (("41", " "), "W"),
+                (("104", " "), "C"),
+            }
+            if conserved_residues.intersection(numbered["numbering"]):
+                if verbose:
+                    print("Low score with conserved residues — check the sequence!")
+                return True
+            else:
+                return False
+    else:
+        return False
 
 
 def renumber_pdbx(
