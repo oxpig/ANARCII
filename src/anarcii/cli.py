@@ -74,7 +74,7 @@ def main():
         sys.exit(str(e))
 
     if not args.output:
-        for name, query in out.values():
+        for name, query in out.items():
             # Print to screen
             print(
                 f" ID: {name}\n",
@@ -82,10 +82,7 @@ def main():
                 f"Score: {query['score']}\n",
                 f"Error: {query['error']}",
             )
-            numbering = query["numbering"]
-            width = max(sum(map(len, numbering)) for numbering, _ in numbering)
-            formatted = (f"{''.join(n):{width}s} {residue}" for n, residue in numbering)
-            print("\n".join(formatted))
+            print({"".join(map(str, n)).strip(): res for n, res in query["numbering"]})
 
     elif args.output.endswith(".csv"):
         model.to_csv(args.output)
