@@ -104,6 +104,9 @@ class ModelRunner:
 
         # Add offsets, where necessary.
         for key, value in offsets.items():
+            # Catch long sequences which have an offset but fail numbering.
+            if numbering[key]["query_start"] is None:
+                continue
             numbering[key]["query_start"] += value
             numbering[key]["query_end"] += value
 
