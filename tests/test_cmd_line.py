@@ -59,23 +59,13 @@ def test_cli_commands(run_cli, args, expected):
 
 @pytest.mark.parametrize(
     "args",
-    [
-        (
-            [
-                "anarcii",
-                "-t",
-                "antibody",
-                "-m",
-                "speed",
-                "-o",
-                "cli_a.json",
-                "unknown.fa",
-            ]
-        ),
-        (["anarcii", "-t", "tcr", "-m", "speed", "-o", "cli_b.json", "unknown.fa"]),
-        (["anarcii", "-t", "shark", "-m", "speed", "-o", "cli_c.json", "unknown.fa"]),
-        (["anarcii", "-t", "unknown", "-m", "speed", "-o", "cli_d.json", "unknown.fa"]),
-    ],
+    (
+        ["anarcii", "-t", "antibody", "-m", "speed", "-o", "cli_a.json", "unknown.fa"],
+        ["anarcii", "-t", "tcr", "-m", "speed", "-o", "cli_b.json", "unknown.fa"],
+        ["anarcii", "-t", "shark", "-m", "speed", "-o", "cli_c.json", "unknown.fa"],
+        ["anarcii", "-t", "unknown", "-m", "speed", "-o", "cli_d.json", "unknown.fa"],
+    ),
+    ids=("antibody", "tcr", "shark", "unknown")
 )
 def test_cli_files(run_cli, args, pytestconfig, tmp_path):
     # Copy the args list so we can modify it
