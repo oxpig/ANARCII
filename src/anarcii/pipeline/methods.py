@@ -2,11 +2,9 @@ import ast
 import json
 
 from anarcii.output_data_processing.list_to import (
-    return_dict,
     return_imgt_regions,
     write_csv,
     write_json,
-    write_text,
 )
 
 
@@ -29,54 +27,6 @@ def print_initial_configuration(self):
                 print("For A100 GPUs, a batch size of 1024 is recommended.")
         else:
             print("Recommended batch size for CPU: 8.")
-
-
-def to_text(self, file_path):
-    # Check if there's output to save
-    if self._last_numbered_output is None:
-        raise ValueError("No output to save. Run the model first.")
-
-    elif self._last_converted_output and not self.max_len_exceed:
-        write_text(self._last_converted_output, file_path)
-        print(
-            f"Last output saved to {file_path} in alternate scheme: {self._alt_scheme}."
-        )
-
-    elif self._last_converted_output and self.max_len_exceed:
-        raise ValueError(
-            f"Cannot renumber more than {1024 * 100} sequences and convert"
-            " to alternate scheme. Feature update coming soon!"
-        )
-
-    elif self.max_len_exceed:
-        # The reads and writes line by line and hence saves RAM
-        with open(self.text_) as infile, open(file_path, "w") as outfile:
-            for line in infile:
-                # Parse the line safely using ast.literal_eval
-                try:
-                    sublist = ast.literal_eval(line.strip())
-                except (ValueError, SyntaxError):
-                    print(f"Skipping invalid line: {line.strip()}")
-                    continue
-
-                nums = sublist[0]
-                name = sublist[1].get("query_name", "Unknown")
-                chain = sublist[1].get("chain_type", "Unknown")
-                score = sublist[1].get("score", "Unknown")
-                error = sublist[1].get("error", "Unknown")
-                start = sublist[1].get("query_start", "Unknown")
-                end = sublist[1].get("query_end", "Unknown")
-
-                # Write the processed line to the output file
-                outfile.write(
-                    f"{name}, Chain: {chain}, {score}, Start: {start},"
-                    f" End: {end}, Error: {error}, {repr(nums)}\n"
-                )
-        print(f"Last output saved to {file_path}")
-
-    else:
-        write_text(self._last_numbered_output, file_path)
-        print(f"Last output saved to {file_path}")
 
 
 def to_csv(self, file_path):
@@ -158,31 +108,6 @@ def to_json(self, file_path):
     else:
         write_json(self._last_numbered_output, file_path)
         print(f"Last output saved to {file_path}")
-
-
-def to_dict(self):
-    # Check if there's output to save
-    if self._last_numbered_output is None:
-        raise ValueError("No output. Run the model first.")
-
-    elif self._last_converted_output and not self.max_len_exceed:
-        return_dict(self._last_converted_output)
-
-    elif self._last_converted_output and self.max_len_exceed:
-        raise ValueError(
-            f"Cannot renumber more than {1024 * 100} sequences and convert"
-            " to alternate scheme. Feature update coming soon!"
-        )
-
-    elif self.max_len_exceed:
-        with open(self.text_) as file:
-            loaded_data = [ast.literal_eval(line.strip()) for line in file]
-        dt = return_dict(loaded_data)
-        return dt
-
-    else:
-        dt = return_dict(self._last_numbered_output)
-        return dt
 
 
 def to_imgt_regions(self):

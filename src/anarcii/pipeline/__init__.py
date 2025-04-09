@@ -1,39 +1,73 @@
-import os
+from __future__ import annotations
+
+import sys
 import time
+import uuid
+from itertools import chain, count, repeat
+from pathlib import Path
+
+import gemmi
+import msgpack
 
 from anarcii.classifii import Classifii
-from anarcii.classifii.utils import join_mixed_types
-from anarcii.inference.model_runner import ModelRunner
+from anarcii.inference.model_runner import CUTOFF_SCORE, ModelRunner
 from anarcii.inference.window_selector import WindowFinder
-
-# Classes
+from anarcii.input_data_processing import Input, coerce_input, split_sequences
 from anarcii.input_data_processing.sequences import SequenceProcessor
-from anarcii.output_data_processing.convert_to_legacy_format import convert_output
+from anarcii.output_data_processing.convert_to_legacy_format import legacy_output
 from anarcii.output_data_processing.schemes import convert_number_scheme
-from anarcii.pdb_process import renumber_pdb_with_anarcii
-from anarcii.pipeline.batch_process import batch_process
 from anarcii.pipeline.configuration import configure_cpus, configure_device
 
 # Processing output
 from anarcii.pipeline.methods import (
     print_initial_configuration,
     to_csv,
-    to_dict,
     to_imgt_regions,
     to_json,
-    to_text,
 )
 
-# Functions for processing input
-from anarcii.pipeline.utils import (
-    count_lines_with_greater_than,
-    is_tuple_list,
-    read_fasta,
-    split_sequence,
-)
+if sys.version_info >= (3, 12):
+    from itertools import batched
+else:
+    from itertools import islice
+
+    def batched(iterable, n, *, strict=False):
+        # batched('ABCDEFG', 3) → ABC DEF G
+        if n < 1:
+            raise ValueError("n must be at least one")
+        iterator = iter(iterable)
+        while batch := tuple(islice(iterator, n)):
+            if strict and len(batch) != n:
+                raise ValueError("batched(): incomplete batch")
+            yield batch
 
 
-# This is the orchestrator of the whole pipeline.
+# Record all groups in mmCIF output, including _atom_site.auth_atom_id and .auth_comp_id
+mmcif_output_groups = gemmi.MmcifOutputGroups(True, auth_all=True)
+# We don't modify ATOM serial numbers and CONECT records.  Preserve them in PDB output.
+pdb_write_options = gemmi.PdbWriteOptions(preserve_serial=True, conect_records=True)
+
+
+def format_timediff(timediff: int | float) -> str:
+    """
+    Format a time difference in seconds as hours, minutes and seconds strings.
+
+    Args:
+        runtime:  The time difference in seconds.
+
+    Returns:
+        Time difference formatted as 'H hours, MM minutes, SS.SS seconds'.
+    """
+    hours, remainder = divmod(timediff, 3600)
+    mins, secs = divmod(remainder, 60)
+
+    hours = f"{hours:.0f} hr, " if hours else ""
+    mins = f"{mins:{'02' if hours else ''}.0f} min, " if hours or mins else ""
+    secs = f"{secs:{'02' if hours or mins else ''}.2f} sec"
+
+    return f"{hours}{mins}{secs}"
+
+
 class Anarcii:
     """
     This class instantiates the models based on user input.
@@ -67,7 +101,7 @@ class Anarcii:
         batch_size: int = 32,
         cpu: bool = False,
         ncpu: int = -1,
-        output_format: str = "simple",  # legacy for old ANARCI
+        legacy_format: bool = False,  # legacy for old ANARCI
         verbose: bool = False,
         max_seqs_len=1024 * 100,
     ):
@@ -77,24 +111,17 @@ class Anarcii:
         self.batch_size = batch_size
         self.verbose = verbose
         self.cpu = cpu
-        self.text_ = "output.txt"
         self.max_seqs_len = max_seqs_len
-        self.max_len_exceed = False
 
-        self.output_format = output_format.lower()
-        self.unknown = False
-
-        self._last_numbered_output = None
+        self._last_numbered_output: dict | Path | None = None
         # Has a conversion to a new number scheme occured?
         self._last_converted_output = None
         self._alt_scheme = None
 
         # Attach methods
         self.print_initial_configuration = print_initial_configuration.__get__(self)
-        self.to_text = to_text.__get__(self)
         self.to_csv = to_csv.__get__(self)
         self.to_json = to_json.__get__(self)
-        self.to_dict = to_dict.__get__(self)
         self.to_imgt_regions = to_imgt_regions.__get__(self)
 
         # Get device and ncpu config
@@ -102,94 +129,110 @@ class Anarcii:
         self.device = configure_device(self.cpu, self.ncpu)
         self.print_initial_configuration()
 
-    def number(self, seqs):
-        if self.seq_type.lower() == "unknown" and not (
-            ".pdb" in seqs or ".mmcif" in seqs
-        ):
-            # classify the  sequences into tcrs or antibodies
+    def number(self, seqs: Input, legacy_format=False):
+        seqs, structure = coerce_input(seqs)
+        if not structure:
+            # Do not split sequences on delimiter characters if the input was in PDBx or
+            # PDB format.  We assume that PDBx/PDB files will have chains identified
+            # individually.
+            seqs: dict[str, str] = split_sequences(seqs, self.verbose)
+        n_seqs = len(seqs)
+
+        if self.verbose:
+            print(f"Length of sequence list: {n_seqs}")
+            n_chunks = -(n_seqs // -self.max_seqs_len)
+
+            print(
+                f"Processing sequences in {n_chunks} chunks of {self.max_seqs_len} "
+                "sequences."
+            )
+            begin = time.time()
+
+        if self.seq_type == "unknown":
             classifii_seqs = Classifii(batch_size=self.batch_size, device=self.device)
 
-            if isinstance(seqs, list):
-                if is_tuple_list(seqs):
-                    dict_of_seqs = {}
-                    for t in seqs:
-                        split_seqs = split_sequence(t[0], t[1], self.verbose)
-                        dict_of_seqs.update(split_seqs)
+        # If there is more than one chunk, we will need to serialise the output.
+        if serialise := n_seqs > self.max_seqs_len:
+            id = uuid.uuid4()
+            self._last_numbered_output = Path(f"anarcii-{id}-imgt.msgpack")
 
-                elif not is_tuple_list(seqs):
-                    dict_of_seqs = {}
-                    for n, t in enumerate(seqs):
-                        name = f"seq{n}"
-                        # Split each sequence as needed and update the dictionary
-                        split_seqs = split_sequence(name, t, self.verbose)
-                        dict_of_seqs.update(split_seqs)
+            # If we serialise we always need to tell the user.
+            print(
+                "\n",
+                f"Serialising output to {self._last_numbered_output} as the number of "
+                f"sequences exceeds the serialisation limit of {self.max_seqs_len}.\n",
+            )
 
-            elif isinstance(seqs, str) and os.path.exists(seqs) and ".fa" in seqs:
-                fastas = read_fasta(seqs, self.verbose)
-                dict_of_seqs = {t[0]: t[1] for t in fastas}
+            packer = msgpack.Packer()
+            # Initialise a MessagePack map with the expected number of sequences, so we
+            # can later stream the key value pairs, rather than needing to create a
+            # separate MessagePack map for each chunk.
+            with self._last_numbered_output.open("wb") as f:
+                f.write(packer.pack_map_header(n_seqs))
 
-            else:
-                print(
-                    "Input is not a list of sequences, nor a valid path to a fasta file"
-                    "(must end in .fa or .fasta), nor a pdb file (.pdb)."
-                )
-                return []
-
-            list_of_tuples_pre_classifii = list(dict_of_seqs.items())
-            list_of_names = list(dict_of_seqs.keys())
-            antibodies, tcrs = classifii_seqs(list_of_tuples_pre_classifii)
+        for i, chunk in enumerate(batched(seqs.items(), self.max_seqs_len), 1):
+            chunk = dict(chunk)
 
             if self.verbose:
-                print("### Ran antibody/TCR classifier. ###\n")
-                print(f"Found {len(antibodies)} antibodies and {len(tcrs)} TCRs.")
+                print(f"Processing chunk {i} of {n_chunks}.")
 
-            antis_out = self.number_with_type(antibodies, "antibody")
-            # If max length has been exceeded here (but not in the next chunk).
-            # You need to ensure that the TCR numberings are written to the same file.
-            # check status of self.max_len_exceed.
-            if self.max_len_exceed:
-                chunk_subsequent = True
+            if self.seq_type == "unknown":
+                # Classify the sequences as TCRs or antibodies.
+                classified = classifii_seqs(chunk)
+
+                if self.verbose:
+                    n_antibodies = len(classified.get("antibody", ()))
+                    n_tcrs = len(classified.get("tcr", ()))
+                    print("### Ran antibody/TCR classifier. ###\n")
+                    print(f"Found {n_antibodies} antibodies and {n_tcrs} TCRs.")
+
+                # Combine the numbered sequences.
+                numbered = {}
+                for seq_type, sequences in classified.items():
+                    numbered.update(self.number_with_type(sequences, seq_type))
+
             else:
-                chunk_subsequent = False
+                numbered = self.number_with_type(chunk, self.seq_type)
 
-            # We need to stay in unknown mode and append to an output file.
-            self.unknown = True
+            # Restore the original input order to the numbered sequences.
+            numbered = {key: numbered[key] for key in chunk}
 
-            tcrs_out = self.number_with_type(tcrs, "tcr", chunk=chunk_subsequent)
-            self.unknown = False  # Reset to false.
+            # If the sequences came from a PDB(x) file, renumber them in the associated
+            # data structure.
+            if structure:
+                for (model_index, chain_id), numbering in numbered.items():
+                    if self.verbose:
+                        print(f"PDBx model index, chain ID: {model_index}, {chain_id}")
+                    if numbered_sequence_qa(numbering, self.verbose):
+                        renumber_pdbx(structure, model_index, chain_id, numbering)
 
-            self._last_numbered_output = join_mixed_types(
-                antis_out, tcrs_out, list_of_names
-            )
+            if serialise:
+                # Stream the key-value pairs of the results dict to the previously
+                # initialised MessagePack map.
+                with self._last_numbered_output.open("ab") as f:
+                    for item in chain.from_iterable(numbered.items()):
+                        f.write(packer.pack(item))
+            else:
+                self._last_numbered_output = numbered
 
-            return convert_output(
-                ls=self._last_numbered_output,
-                format=self.output_format,
-                verbose=self.verbose,
-            )
+        if self.verbose:
+            end = time.time()
+            print(f"Numbered {n_seqs} seqs in {format_timediff(end - begin)}.\n")
 
+        # If our sequences came from a PDBx or PDB file, write a renumbered version.
+        if structure:
+            write_pdbx_file(structure)
+
+        if legacy_format and not serialise:
+            return legacy_output(self._last_numbered_output, verbose=self.verbose)
         else:
-            # PDB files can be run directly, bypassing classifii at this stage.
-            # They will be classified into ab/tcrs by an inner model which takes list of
-            #  seqs read from a PDB file (these can pass through the Classifii code).
-            type = "antibody" if ".pdb" in seqs or ".mmcif" in seqs else self.seq_type
-            self._last_numbered_output = self.number_with_type(seqs, type)
-            return convert_output(
-                ls=self._last_numbered_output,
-                format=self.output_format,
-                verbose=self.verbose,
-            )
+            return self._last_numbered_output
 
     def to_scheme(self, scheme="imgt"):
         # Check if there's output to save
         if self._last_numbered_output is None:
             raise ValueError("No output to convert. Run the model first.")
 
-        elif self.max_len_exceed:
-            raise ValueError(
-                f"Cannot renumber more than {1024 * 100} sequences and convert"
-                " to alternate scheme. Feature update coming soon!"
-            )
         else:
             converted_seqs = convert_number_scheme(self._last_numbered_output, scheme)
             print(f"Last output converted to {scheme}")
@@ -202,158 +245,128 @@ class Anarcii:
 
             return converted_seqs
 
-    def number_with_type(self, seqs, inner_type, chunk=False):
+    def number_with_type(self, seqs: dict[str, str], seq_type):
         model = ModelRunner(
-            inner_type, self.mode, self.batch_size, self.device, self.verbose
+            seq_type, self.mode, self.batch_size, self.device, self.verbose
         )
-        window_model = WindowFinder(inner_type, self.mode, self.batch_size, self.device)
+        window_model = WindowFinder(seq_type, self.mode, self.batch_size, self.device)
 
-        # Reset this
-        self.max_len_exceed = False
+        processor = SequenceProcessor(seqs, model, window_model, self.verbose)
+        tokenised_seqs, offsets = processor.process_sequences()
 
-        # clear the output file
-        if hasattr(self, "text_") and os.path.exists(self.text_) and not self.unknown:
-            os.remove(self.text_)
+        # Perform numbering.
+        return model(tokenised_seqs, offsets)
 
-        chunk_list = []
-        begin = time.time()
 
-        if isinstance(seqs, list):
-            if is_tuple_list(seqs):
-                if self.verbose:
-                    print(
-                        "Running on a list of tuples of format: [(name,sequence), ...]."
-                    )
+def numbered_sequence_qa(numbered: dict, verbose=False) -> bool:
+    """
+    Quality assurance check for an ANARCII-numbered sequence.
 
-                nms = [x[0] for x in seqs]
-                if len(nms) != len(set(nms)):  # Detect duplicates
-                    raise SystemExit(
-                        "Error: Duplicate names found."
-                        + "Please ensure all names are unique."
-                    )
+    Given an ANARCII-numbered sequence, check whether it is 'good' according to the
+    following criteria:
+      1. The assigned chain type is either 'HLK' (antibody) or 'ABDG' (TCR); and
+      2. Either of the following criteria are met:
+         a) The numbering model score is at least 19.
+         b) The sequence contains conserved residues at the following IMGT positions:
+            - 23: C
+            - 41: W
+            - 104: C
 
-                dict_of_seqs = {}
-                for t in seqs:
-                    # Split each sequence as needed and update the dictionary
-                    split_seqs = split_sequence(t[0], t[1], self.verbose)
-                    dict_of_seqs.update(split_seqs)
+    Args:
+        numbered:  An ANARCII-numbered seuence and associated metadata.
 
-            elif not is_tuple_list(seqs):
-                if self.verbose:
-                    print("Running on a list of strings: [sequence, ...].")
-
-                dict_of_seqs = {}
-                for n, t in enumerate(seqs):
-                    name = f"seq{n}"
-                    # Split each sequence as needed and update the dictionary
-                    split_seqs = split_sequence(name, t, self.verbose)
-                    dict_of_seqs.update(split_seqs)
-
-            if self.verbose:
-                print("Length of sequence list: ", len(dict_of_seqs))
-
-            # If the list is huge - breakup into chunks of 1M.
-            if len(dict_of_seqs) > self.max_seqs_len or chunk:
-                print(
-                    "\nMax # of seqs exceeded.",
-                    f"Running chunks of {self.max_seqs_len}.\n",
-                )
-
-                keys = list(dict_of_seqs.keys())  # Convert dictionary keys to a list
-                num_seqs = len(keys)
-
-                num_chunks = (len(dict_of_seqs) // self.max_seqs_len) + 1
-                for i in range(num_chunks):
-                    chunk_keys = keys[
-                        i * self.max_seqs_len : (i + 1) * self.max_seqs_len
-                    ]
-                    chunk_list.append({k: dict_of_seqs[k] for k in chunk_keys})
-
-                self.max_len_exceed = True
-
-        # Fasta file
-        elif isinstance(seqs, str) and os.path.exists(seqs) and ".fa" in seqs:
-            if self.verbose:
-                print("Running on fasta file.")
-
-            num_seqs = count_lines_with_greater_than(seqs)
-            if self.verbose:
-                print("Length of sequence list: ", num_seqs)
-
-            if num_seqs > self.max_seqs_len:
-                print(
-                    f"Max # of seqs exceeded. Running chunks of {self.max_seqs_len}.\n"
-                )
-                num_chunks = (num_seqs // self.max_seqs_len) + 1
-                for i in range(num_chunks):
-                    fastas = read_fasta(seqs, self.verbose)[
-                        i * self.max_seqs_len : (i + 1) * self.max_seqs_len
-                    ]
-                    chunk_list.append({t[0]: t[1] for t in fastas})
-                self.max_len_exceed = True
-
+    Returns:
+        bool:  True if the criteria are met.
+    """
+    if numbered["chain_type"] in (
+        "HLK"  # Antibody
+        "ABDG"  # TCR
+    ):
+        if verbose:
+            print(
+                f"ANARCII chain type (score): {numbered['chain_type']} "
+                f"({numbered['score']})\n",
+                f"Sequence length: {len(numbered['numbering'])}\n",
+                f"Sequence: {numbered['numbering']}",
+            )
+        if numbered["score"] >= CUTOFF_SCORE:
+            return True
+        else:
+            conserved_residues = {
+                (("23", " "), "C"),
+                (("41", " "), "W"),
+                (("104", " "), "C"),
+            }
+            if conserved_residues.intersection(numbered["numbering"]):
+                if verbose:
+                    print("Low score with conserved residues — check the sequence!")
+                return True
             else:
-                fastas = read_fasta(seqs, self.verbose)
-                dict_of_seqs = {t[0]: t[1] for t in fastas}
+                return False
+    else:
+        return False
 
-        # PDB files
-        elif (
-            isinstance(seqs, str)
-            and os.path.exists(seqs)
-            and (".pdb" in seqs or ".mmcif" in seqs)
-        ):
-            # Unknown mode is taken care of here. Do not worry about passing classifii.
-            print(f"Renumbering a PDB/mmCIF file in {self.seq_type} mode")
-            numbered_chains = renumber_pdb_with_anarcii(
-                seqs,
-                inner_seq_type=self.seq_type,
-                inner_mode=self.mode,
-                inner_batch_size=self.batch_size,
-                inner_cpu=self.cpu,
-            )
-            return numbered_chains
 
-        else:
-            print(
-                "Input is not a list of sequences, nor a valid path to a fasta file "
-                "(must end in .fa or .fasta), nor a pdb file (.pdb)."
-            )
-            return []
+def renumber_pdbx(
+    structure: gemmi.Structure, model_index: int, chain_id: str, numbered: dict
+) -> None:
+    """
+    Write residue numbers from an ANARCII-numbered sequence to a Gemmi structure.
 
-        if len(chunk_list) > 1:
-            numbered_seqs = batch_process(
-                chunk_list, model, window_model, self.verbose, self.text_
-            )
+    Args:
+        structure:    Representation of a PDBx or PDB file.
+        model_index:  Index of the relevant model in the file.
+        chain_id:     ID of the relevant chain in the model.
+        numbering:    ANARCII model output for a given sequence.
+    """
+    # Get the sequence indicated by the model index and chain ID.
+    polymer: gemmi.ResidueSpan = structure[model_index][chain_id].get_polymer()
+    # Drop gap marks ('-') from the numbered sequence.  They do not exist in the file.
+    no_gaps = ((num, res) for num, res in numbered["numbering"] if res != "-")
+    # Get the residue numbering and one-letter peptide sequence as separate tuples.
+    numbers, sequence = zip(*no_gaps)
+    # Find the number of the first numbered residue.
+    (first_number, _), *_, (last_number, _) = numbers
 
-            end = time.time()
-            runtime = round((end - begin) / 60, 2)
+    try:
+        # Get the numbering offset, by matching the numbered sequence to the original...
+        offset: int = polymer.make_one_letter_sequence().index("".join(sequence))
+    except ValueError:
+        # ... or by falling back on the model's reported start index.
+        offset: int = numbered["query_start"]
 
-            if self.verbose:
-                print(f"Numbered {num_seqs} seqs in {runtime} mins. \n")
+    # Generate numbers for the residues in the file that precede the numbered sequence.
+    backward_fill = zip(range(first_number - offset, first_number), repeat(" "))
+    forward_fill = zip(count(last_number + 1), repeat(" "))
+    numbers = chain(backward_fill, numbers, forward_fill)
 
-            print(
-                f"\nOutput written to {self.text_}. Convert to csv or text with: "
-                "model.to_csv(filepath) or model.to_text(filepath)"
-            )
+    # Residue by residue, write the new numbering.
+    for residue, number in zip(structure[model_index][chain_id], numbers):
+        residue.seqid = gemmi.SeqId(*number)
 
-            return numbered_seqs
 
-        else:
-            # instantiate the Sequences class and process
-            sequences = SequenceProcessor(
-                dict_of_seqs, model, window_model, self.verbose
-            )
-            processed_seqs, offsets = sequences.process_sequences()
+def write_pdbx_file(structure: gemmi.Structure, scheme="imgt") -> None:
+    """
+    Write a Gemmi PDBx structure to file.
 
-            # Offset for longseqs only - replace the indices...
-            # ==========================================================================
-            numbered_seqs = model(processed_seqs, offsets)
-            # ==========================================================================
+    Use the same format as the source file, as determined by `structure.input_format`.
+    Label the file with `structure.name` and the name of the numbering scheme used.
 
-            end = time.time()
-            runtime = round((end - begin) / 60, 2)
+    Args:
+        structure:  Representation of a PDBx or PDB file.
+        scheme:     Numbering scheme used to generate the structure.
+    """
+    stem = f"{structure.name.lower()}-anarcii-{scheme}"
 
-            if self.verbose:
-                print(f"Numbered {len(numbered_seqs)} seqs in {runtime} mins. \n")
+    if structure.input_format is gemmi.CoorFormat.Pdb:
+        structure.write_pdb(f"{stem}.pdb", pdb_write_options)
 
-            return numbered_seqs
+    else:
+        document = structure.make_mmcif_document(mmcif_output_groups)
+
+        if structure.input_format is gemmi.CoorFormat.Mmcif:
+            document.write_file(f"{stem}.cif")
+
+        elif structure.input_format is gemmi.CoorFormat.Mmjson:
+            with open(f"{stem}.json", "w") as f:
+                f.write(document.as_json(mmjson=True))

@@ -1,17 +1,16 @@
-import contextlib
-import filecmp
-import pathlib
-import shutil
 import sys
+from pathlib import Path
 
+import gemmi
 import pytest
 
 from anarcii import Anarcii
 
 if sys.version_info < (3, 11):
     import os
+    from contextlib import contextmanager
 
-    @contextlib.contextmanager
+    @contextmanager
     def chdir(path):
         """
         Change directory for the duration of the context.
@@ -24,17 +23,18 @@ if sys.version_info < (3, 11):
         finally:
             os.chdir(_old_cwd)
 else:
-    chdir = contextlib.chdir
+    from contextlib import chdir
 
 
 raw_filenames = "1kb5.pdb", "8kdm.pdb"
-raw_file_paths = map(pathlib.Path, raw_filenames)
-output_filenames = [p.with_stem(f"{p.stem}_anarcii") for p in raw_file_paths]
+raw_paths = [Path(f) for f in raw_filenames]
+reference_paths = [p.with_stem(f"{p.stem}_anarcii") for p in raw_paths]
+test_paths = [p.with_stem(f"{p.stem}-anarcii-imgt") for p in raw_paths]
 
 model = Anarcii(
     seq_type="unknown",
     batch_size=1,
-    cpu=False,
+    cpu=True,
     ncpu=16,
     mode="accuracy",
     verbose=True,
@@ -42,30 +42,39 @@ model = Anarcii(
 
 
 @pytest.fixture(scope="session")
-def anarcii_model(tmp_path_factory, pytestconfig) -> pathlib.Path:
+def anarcii_model(tmp_path_factory, pytestconfig) -> Path:
     """
     Renumber some source PDB riles and return the path to their temporary directory.
     """
     tmp_path = tmp_path_factory.mktemp("renumbered-pdbs-")
     raw_data = pytestconfig.rootpath / "tests" / "data" / "raw_data"
     with chdir(tmp_path):
-        for filename in raw_filenames:
-            # At present, PDB renumbering only works in place, acting on a file in the
-            # working directory.  Accordingly, copy the source data into our temporary
-            # directory.
-            shutil.copy2(raw_data / filename, tmp_path)
-            model.number(filename)
+        for filename in raw_paths:
+            # At present, PDB renumbering only writes output PDBx and PDB files to the
+            # working directory.
+            model.number(raw_data / filename)
 
     return tmp_path
 
 
-@pytest.mark.parametrize("filename", output_filenames)
-def test_files_are_identical(pytestconfig, anarcii_model, filename):
-    """Generate and check both text and json files."""
+@pytest.mark.parametrize(
+    "reference,test", zip(reference_paths, test_paths), ids=raw_filenames
+)
+def test_files_are_identical(pytestconfig, anarcii_model, reference, test):
+    """Generate and check renumbered PDB files."""
     expected_data = pytestconfig.rootpath / "tests" / "data" / "expected_data"
-    expected_file = expected_data / filename
-    test_file = anarcii_model / filename
 
-    assert filecmp.cmp(expected_file, test_file, shallow=False), (
-        f"Files {expected_file} and {test_file} are different!"
-    )
+    expected_structure = gemmi.read_structure(str(expected_data / reference))
+    expected_structure.setup_entities()
+    test_structure = gemmi.read_structure(str(anarcii_model / test))
+    test_structure.setup_entities()
+
+    expected_numbering = [
+        [[residue.seqid for residue in chain] for chain in model]
+        for model in expected_structure
+    ]
+    test_numbering = [
+        [[residue.seqid for residue in chain] for chain in model]
+        for model in test_structure
+    ]
+    assert test_numbering == expected_numbering

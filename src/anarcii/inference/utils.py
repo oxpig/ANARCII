@@ -28,20 +28,18 @@ def collate_fn(batch):
     return pad_sequence(batch, batch_first=True, padding_value=0)
 
 
-def dataloader(batch_size, list_of_tensors):
+def dataloader(batch_size, tokenised_seqs):
     """
     Returns a DataLoader that batches sequences dynamically.
 
     Parameters:
     - batch_size (int): Number of sequences per batch.
-    - list_of_tensors (list of tensors): Tokenized sequences.
+    - tokenised_seqs (list of tensors): Tokenized sequences.
 
     Returns:
     - DataLoader: Batches of shape [batch_size, max_seq_len].
     """
-    return DataLoader(
-        list_of_tensors, batch_size=batch_size, shuffle=False, collate_fn=collate_fn
-    )
+    return DataLoader(tokenised_seqs, batch_size=batch_size, collate_fn=collate_fn)
 
 
 def build_inward_list(length: int, start_num: int, end_num: int):
@@ -103,76 +101,3 @@ def build_inward_list(length: int, start_num: int, end_num: int):
 
     else:
         raise ValueError("Error in converting predicted insertions labels.")
-
-
-def format_output(indices, names, numbering, alignment, offsets):
-    """
-    Reorders the predicted outputs according to the original index.
-
-    In order to maximise the speed gains that come from sorting and padding by max
-    seq length in batches the original indicies were kept before sorting
-    and then used to reorder the length sorted outputs to the original order.
-    """
-
-    if not len(indices) == len(names) == len(numbering) == len(alignment):
-        exit("Length of names does not equal predictions, an error has occurred.")
-
-    # Update `align` with `query_name`
-    for name, align in zip(names, alignment):
-        align["query_name"] = name
-        if offset := offsets.get(name):
-            try:
-                align["query_start"] += offset
-                align["query_end"] += offset
-            except TypeError:
-                # catch None type in query start and end
-                continue
-
-    output = sorted(zip(indices, numbering, alignment))
-
-    # Remove the original index to get back the original list order
-    output = [(number, align) for _, number, align in output]
-    return output
-
-
-### MY OLD CODE ###
-# def floating_pad(list_of_tensors, batch_size):
-#     """
-#     Pads and batches a list of tokenized sequences.
-
-#     This function takes a list of tokenized sequences (each sequence being a
-#     list of PyTorch tensors), groups them into batches, pads them to the
-#     length of the longest sequence in each batch.
-
-#     They are iterated over and each padded sequence tensor is individually
-#     added to a list which is returned.
-
-#     Parameters:
-#     - list_of_tensors (list of lists of tensors): Tokenized seqs.
-#     - batch_size (int): Seqs per batch.
-
-#     Returns:
-#     - list of torch.Tensors: List of tensors of padded seqs. Length = total # of seqs
-#     """
-#     X = []
-#     for i in range(0, len(list_of_tensors), batch_size):
-#         chunk = list_of_tensors[i : i + batch_size]
-#         X += pad_sequence(chunk, batch_first=True, padding_value=0)
-#         # returns single tensor [batch_size, max_seq_len]
-
-#         # PLEASE NOTE:
-#         # += treats the tensor as an iterable and progressively adds
-#         # one "row" or sequence to the list
-#         # it removes the batch dimension.
-#         # Len of X is just the number of sequences.
-
-#     return X
-
-
-# def dataloader(batch_size, ls):
-#     """
-#     Move the tensors of padded sequences to a dataloader with defined batch size.
-#     """
-#     padded = floating_pad(ls, batch_size)
-#     dldr = DataLoader(padded, batch_size=batch_size, shuffle=False)
-#     return dldr

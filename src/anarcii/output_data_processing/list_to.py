@@ -3,9 +3,6 @@ import re
 
 import pandas as pd
 
-### BEN - NEW CSV CODE MUST CHECK FOR DUPLICATE NUMBERS AND RETURN A WARNING -
-# THEN DROP THE ROW ###
-
 
 def write_csv(ls, filename=None):
     # Works on the simple output
@@ -67,35 +64,9 @@ def write_csv(ls, filename=None):
     return df
 
 
-def write_text(ls, file_path):
-    with open(file_path, "w") as file:
-        for sublist in ls:
-            nums = sublist[0]
-            name = sublist[1].get("query_name", "Unknown")
-            chain = sublist[1].get("chain_type", "Unknown")
-            score = sublist[1].get("score", "Unknown")
-            error = sublist[1].get("error", "Unknown")
-            start = sublist[1].get("query_start", "Unknown")
-            end = sublist[1].get("query_end", "Unknown")
-
-            file.write(
-                f"{name}, Chain: {chain}, {score}, Start: {start}, End: {end},"
-                f" Error: {error}, {repr(nums)}\n"
-            )
-
-
 def write_json(data, file_path):
     with open(file_path, "w") as json_file:
         json.dump(data, json_file, indent=2)
-
-
-def return_dict(ls):
-    dt = {}
-    for sublist in ls:
-        nums = sublist[0]
-        name = sublist[1]["query_name"]
-        dt[name] = nums
-    return dt
 
 
 def return_imgt_regions(ls):

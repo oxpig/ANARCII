@@ -9,6 +9,7 @@ __pycache__/
 
 *gpu*.pt
 
+*.msgpack
 *.png
 *.pdf
 *.csv

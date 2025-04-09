@@ -94,7 +94,7 @@ class WindowFinder:
 
                 for batch_no in range(batch_size):
                     normalized_likelihood = likelihoods[batch_no, 0].item()
-                    preds.append(round(normalized_likelihood, 3))
+                    preds.append(normalized_likelihood)
 
             # print(preds)
 

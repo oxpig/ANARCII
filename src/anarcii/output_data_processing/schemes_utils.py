@@ -25,10 +25,9 @@ def conversion_function(anarcii_numbered_seq, scheme_name):
     """
     scheme = schemes[scheme_name]
 
-    nums = anarcii_numbered_seq[0]
-    name = anarcii_numbered_seq[1]["query_name"]
-    chain_type = anarcii_numbered_seq[1]["chain_type"]
-    score = anarcii_numbered_seq[1]["score"]
+    nums = anarcii_numbered_seq["numbering"]
+    chain_type = anarcii_numbered_seq["chain_type"]
+    score = anarcii_numbered_seq["score"]
 
     query_state = ["X" if x[0][1] == " " else "I" for x in nums]
     query_nums = [int(x[0][0]) for x in nums]
@@ -151,15 +150,12 @@ def conversion_function(anarcii_numbered_seq, scheme_name):
 
     top_level_scheme_nm, *_ = scheme_name.split("_")
 
-    return (
-        gap_missing(unpacked_regions),
-        {
-            "chain_type": chain_type,
-            "score": score,
-            "query_start": anarcii_numbered_seq[1]["query_start"],
-            "query_end": anarcii_numbered_seq[1]["query_end"],
-            "error": None,
-            "scheme": top_level_scheme_nm,
-            "query_name": name,
-        },
-    )
+    return {
+        "numbering": gap_missing(unpacked_regions),
+        "chain_type": chain_type,
+        "score": score,
+        "query_start": anarcii_numbered_seq["query_start"],
+        "query_end": anarcii_numbered_seq["query_end"],
+        "error": None,
+        "scheme": top_level_scheme_nm,
+    }

@@ -2,9 +2,12 @@ import re
 
 import torch
 
-from .utils import pick_window, split_seq
+from anarcii.inference.model_runner import ModelRunner
+from anarcii.inference.window_selector import WindowFinder
+from anarcii.input_data_processing import TokenisedSequence
+from anarcii.input_data_processing.tokeniser import Tokeniser
 
-# from anarcii.pipeline.anarcii_constants import n_jump
+from .utils import pick_windows, split_seq
 
 # A regex pattern to match no more than 200 residues, containing a 'CWC' pattern
 # (cysteine followed by 5–25 residues followed by a tryptophan followed by 50–80
@@ -33,7 +36,7 @@ cwc_pattern = re.compile(
 class SequenceProcessor:
     """
     This class takes a dict of sequences  {name: seq}. As well as pre-defined models
-    the relate to the sequence type (antibody, TCR, shark).
+    that relate to the sequence type (antibody, TCR, shark).
 
     It has several steps it performs to pre-process the list of seqs so it can be
     consumed by the language model. These include:
@@ -42,21 +45,24 @@ class SequenceProcessor:
     * Checking for long seqs that exceed the context window (200 residues)
     * Working out what "window" within the long seq should be passed to the model.
     * holding the offsets to allow us to translate the indices back to the original
-    long seq.
+      long seq.
 
     # 2
-    * Converting the list of seqs to a tuple that has indices corresponding to user
-    input order.
-    * Sorting the tuple by length of seqs to ensure we can pad batches of seqs
-    that all share a similar length - to reduce unnecessary autoregressive infercence
-    steps.
+    * Sorting the tuple by length of seqs to ensure we can pad batches of seqs that all
+    share a similar length - to reduce unnecessary autoregressive infercence steps.
 
     # 3
     * Tokenising the sequences to numbers - then putting these into torch tensors.
 
     """
 
-    def __init__(self, seqs, model, window_model, verbose):
+    def __init__(
+        self,
+        seqs: dict[str, str],
+        model: ModelRunner,
+        window_model: WindowFinder,
+        verbose: bool,
+    ):
         """
         Args:
             seqs (dict): A dictionary, keys are sequence IDs and values are sequences.
@@ -66,23 +72,20 @@ class SequenceProcessor:
             score for the input window (sequence fragment).
             verbose (bool): Whether to print detailed logs.
         """
-        self.seqs = seqs
-        self.model = model
-        self.window_model = window_model
-        self.verbose = verbose
-        self.offsets = {}
+        self.seqs: dict[str, str] = seqs
+        self.model: ModelRunner = model
+        self.window_model: WindowFinder = window_model
+        self.verbose: bool = verbose
+        self.offsets: dict[str, int] = {}
 
     def process_sequences(self):
         # Step 1: Handle long sequences
         self._handle_long_sequences()
 
-        # Step 2: Convert dictionary to a list of tuples
-        self._convert_to_tuple_list()
-
-        # Step 3: Sort sequences by length
+        # Step 2: Sort sequences by length
         self._sort_sequences_by_length()
 
-        # Step 4: Tokenize sequences
+        # Step 3: Tokenize sequences
         return self._tokenize_sequences(), self.offsets
 
     def _handle_long_sequences(self):
@@ -103,7 +106,7 @@ class SequenceProcessor:
 
             if cwc_matches:
                 # Output the integer index of a high scoring window
-                cwc_winner = pick_window(cwc_strings, self.window_model)
+                cwc_winner = pick_windows(cwc_strings, self.window_model)
 
                 if cwc_winner is not None:
                     # Append the start offset
@@ -118,7 +121,7 @@ class SequenceProcessor:
             # Split the sequence into 90-residue chunks and pick the best.
             windows = split_seq(sequence, n_jump=n_jump)
 
-            best_window = pick_window(windows, model=self.window_model, fallback=True)
+            best_window = pick_windows(windows, model=self.window_model, fallback=True)
 
             # Ensures start_index is at least 0.
             start_index = max((best_window * n_jump) - 40, 0)
@@ -132,31 +135,21 @@ class SequenceProcessor:
         if long_seqs and self.verbose:
             print("Max probability windows selected.\n")
 
-    def _convert_to_tuple_list(self):
-        """
-        Enumerates the list to give each seq an index.
-        This allows sequences to be sorted by length and then recombined by this index.
-        """
-        self.seqs = [(i, nm, seq) for i, (nm, seq) in enumerate(self.seqs.items())]
-
     def _sort_sequences_by_length(self):
-        self.seqs = sorted(self.seqs, key=lambda x: len(x[2]))
+        self.seqs = dict(sorted(self.seqs.items(), key=lambda x: len(x[1])))
 
-    def _tokenize_sequences(self):
-        aa = self.model.sequence_tokeniser
-        tokenized_seqs = []
+    def _tokenize_sequences(self) -> dict[str, TokenisedSequence]:
+        aa: Tokeniser = self.model.sequence_tokeniser
+        tokenized_seqs = {}
 
-        for seq in self.seqs:
-            bookend_seq = [aa.start] + list(seq[2]) + [aa.end]
+        for name, seq in self.seqs.items():
+            bookend_seq = [aa.start, *seq, aa.end]
             try:
-                tokenized_seq = torch.from_numpy(aa.encode(bookend_seq))
-                tokenized_seqs.append((seq[0], seq[1], tokenized_seq))
+                tokenized_seqs[name] = torch.from_numpy(aa.encode(bookend_seq))
             except KeyError as e:
                 print(
                     f"Sequence could not be numbered. Contains an invalid residue: {e}"
                 )
-                tokenized_seqs.append(
-                    (seq[0], seq[1], torch.from_numpy(aa.encode(["F"])))
-                )
+                tokenized_seqs[name] = torch.from_numpy(aa.encode(["F"]))
 
         return tokenized_seqs

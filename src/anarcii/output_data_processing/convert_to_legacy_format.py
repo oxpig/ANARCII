@@ -1,29 +1,31 @@
-def convert_output(ls, format, verbose):
-    if format == "simple":
-        return ls
+# FIXME:  Refactor for new numbered sequence data structure.
+def legacy_output(dt, verbose):
+    if verbose:
+        print(
+            "Converting to legacy format. Three separate lists. \n",
+            "A list of numberings, a list of all alignment details (contains, id, "
+            "chain and score), and an empty list for hit tables. \n",
+        )
 
-    elif format == "legacy":
-        if verbose:
-            print(
-                "Converting to legacy format. Three separate lists. \n",
-                "A list of numberings, a list of all alignment details (contains, id, "
-                "chain and score), and an empty list for hit tables. \n",
+    numbering, alignment_details, hit_tables = [], [], []
+    for key, value in dt.items():
+        if value["numbering"]:
+            numbering.append(
+                [(value["numbering"], value["query_start"], value["query_end"])]
             )
+        else:
+            numbering.append(None)
 
-        numbering, alignment_details, hit_tables = [], [], []
-        for x in ls:
-            if x[0]:
-                numbering.append([(x[0], x[1]["query_start"], x[1]["query_end"])])
-            else:
-                numbering.append(None)
+        # Changes for Ody needed here.
+        new_dict = {}
+        new_dict["species"] = None
+        new_dict["scheme"] = "imgt"
+        new_dict["query_name"] = key
+        new_dict["query_start"] = value["query_start"]
+        new_dict["end"] = value["query_end"]
 
-            # Changes for Ody needed here.
-            new_dict = x[1]
-            new_dict["species"] = None
-            new_dict["scheme"] = "imgt"
+        alignment_details.append([new_dict])
 
-            alignment_details.append([new_dict])
+        hit_tables.append(None)
 
-            hit_tables.append(None)
-
-        return numbering, alignment_details, hit_tables
+    return numbering, alignment_details, hit_tables
