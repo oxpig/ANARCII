@@ -52,6 +52,17 @@ def run_cli():
     ],
 )
 def test_cli_commands(run_cli, args, expected):
+    """
+    Basic test of the command line interface (CLI) of the Anarcii tool.
+    This test checks that an output comes from the CLI for various input arguments.
+    It then searches the stdout for some basic expected output, like no error, score or
+    chain type etc.
+    The test cases include:
+    - Displaying the help message
+    - Providing a sequence without specifying the type, expect no error
+    - Providing a TCR sequence and checking the score starts with 28
+    - Providing an unknown type and checking the chain is H
+    """
     result = run_cli(args)
     assert result.returncode == 0
     assert expected in result.stdout
@@ -65,9 +76,16 @@ def test_cli_commands(run_cli, args, expected):
         ["anarcii", "-t", "shark", "-m", "speed", "-o", "cli_c.json", "unknown.fa"],
         ["anarcii", "-t", "unknown", "-m", "speed", "-o", "cli_d.json", "unknown.fa"],
     ),
-    ids=("antibody", "tcr", "shark", "unknown")
+    ids=("antibody", "tcr", "shark", "unknown"),
 )
 def test_cli_files(run_cli, args, pytestconfig, tmp_path):
+    """
+    More detailed tests of the CLI using the unknown fasta file.
+
+    This test checks that the output files are generated correctly and checks against
+    specific expected values in the json files.
+
+    """
     # Copy the args list so we can modify it
     new_args = args.copy()
 
