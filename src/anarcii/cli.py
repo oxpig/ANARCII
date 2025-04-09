@@ -46,7 +46,7 @@ parser.add_argument(
     "--output",
     type=str,
     default=None,
-    help="Specify the output file (must end in .txt, .csv or .json).",
+    help="Specify the output file (must end in .csv or .msgpack).",
 )
 parser.add_argument(
     "-v", "--verbose", action="store_true", help="Enable verbose output."
@@ -82,17 +82,18 @@ def main():
                 f"Score: {query['score']}\n",
                 f"Error: {query['error']}",
             )
-            print({"".join(map(str, n)).strip(): res for n, res in query["numbering"]})
+            # Only print the numbering if it is not empty
+            if query["numbering"]:
+                print(
+                    {"".join(map(str, n)).strip(): res for n, res in query["numbering"]}
+                )
 
     elif args.output.endswith(".csv"):
         model.to_csv(args.output)
-    elif args.output.endswith(".json"):
-        model.to_json(args.output)
-    # TODO:  Add msgpack support.
-    # elif args.output.endswith(".msgpack"):
-    #     model.to_msgpack(args.output)
+    elif args.output.endswith(".msgpack"):
+        model.to_msgpack(args.output)
     else:
-        raise ValueError("Output file must end in .csv, or .json.")
+        raise ValueError("Output file must end in .csv, or .msgpack.")
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ def run_cli():
                 "GGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAISGSGG"
                 "STYYADSVKGRFTISRDNSKNTLYLQMNSLRAEDTAVYYCAKDRSTDSSSWYYYYYG",
             ],
-            "Error:  None",
+            "Error: None",
         ),
         (
             [
@@ -37,7 +37,7 @@ def run_cli():
                 "GGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAISGSGG"
                 "STYYADSVKGRFTISRDNSKNTLYLQMNSLRAEDTAVYYCAKDRSTDSSSWYYYYYG",
             ],
-            "Score:  28",
+            "Score: 28",
         ),
         (
             [
@@ -47,7 +47,7 @@ def run_cli():
                 "GGSLRLSCAASGFTFSSYAMSWVRQAPGKGLEWVSAISGSGG"
                 "STYYADSVKGRFTISRDNSKNTLYLQMNSLRAEDTAVYYCAKDRSTDSSSWYYYYYG",
             ],
-            "Chain:  H",
+            "Chain: H",
         ),
     ],
 )
