@@ -123,12 +123,13 @@ def test_cli_files(run_cli, args, pytestconfig, tmp_path):
         expected_number, expected_data = expected_item
         test_number, test_data = test_item
 
+        query_name = expected_data["query_name"]
         assert expected_number == test_number, (
-            f"Numbering for {expected_data.get('query_name', '')} is different! "
+            f"Numbering for {query_name} is different! "
             f"Expected: {expected_number}, Got: {test_number}"
         )
         reference = pytest.approx(expected_data["score"], abs=0.5)
         assert test_data["score"] == reference, (
-            f"Scores differ more than 0.5 for {expected_data.get('query_name', '')}! "
+            f"Scores differ more than 0.5 for {query_name}! "
             f"Expected: {expected_data['score']}, Got: {test_data['score']}"
         )
