@@ -100,7 +100,7 @@ def main():
     elif args.output.endswith(".csv"):
         model.to_csv(args.output)
     elif args.output.endswith(".txt"):
-        model.to_text(args.output)
+        model.to_txt(args.output)
     elif args.output.endswith(".json"):
         model.to_json(args.output)
     else:
