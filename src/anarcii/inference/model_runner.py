@@ -10,6 +10,10 @@ from .utils import build_inward_list, dataloader
 # SOMETHING SHOULD BE MODIFIED TO REDUCE THEM....
 
 
+# A cutoff score to consider a sequence as well numbered by the language model.
+CUTOFF_SCORE = 15
+
+
 class ModelRunner:
     """
     This class orchestrates the auto-regressive inference steps.
@@ -249,9 +253,7 @@ class ModelRunner:
                         normalized_score = 0.0
                         error_msg = "Less than 50 non insertion residues numbered."
 
-                    #### MAGIC NUMBER ####
-                    # This is the antibody cutoff - need a new one for TCRS
-                    if normalized_score < 13.5:
+                    if normalized_score < CUTOFF_SCORE:
                         numbering.append(
                             {
                                 "numbering": None,

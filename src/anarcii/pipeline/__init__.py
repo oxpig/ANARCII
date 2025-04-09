@@ -10,7 +10,7 @@ import gemmi
 import msgpack
 
 from anarcii.classifii import Classifii
-from anarcii.inference.model_runner import ModelRunner
+from anarcii.inference.model_runner import CUTOFF_SCORE, ModelRunner
 from anarcii.inference.window_selector import WindowFinder
 from anarcii.input_data_processing import Input, coerce_input, split_sequences
 from anarcii.input_data_processing.sequences import SequenceProcessor
@@ -289,7 +289,7 @@ def numbered_sequence_qa(numbered: dict, verbose=False) -> bool:
                 f"Sequence length: {len(numbered['numbering'])}\n",
                 f"Sequence: {numbered['numbering']}",
             )
-        if numbered["score"] >= 19:
+        if numbered["score"] >= CUTOFF_SCORE:
             return True
         else:
             conserved_residues = {
