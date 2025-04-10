@@ -61,31 +61,3 @@ def write_csv(ls, filename=None):
         df.to_csv(filename, index=False, header=True)
 
     return df
-
-
-# Keep the function below in case we need again.
-def return_imgt_regions(ls):
-    # Define IMGT regions with ranges
-    imgt_regions = {
-        "fw1": range(1, 27),
-        "cdr1": range(27, 39),
-        "fw2": range(39, 56),
-        "cdr2": range(56, 66),
-        "fw3": range(66, 105),
-        "cdr3": range(105, 118),
-        "fw4": range(118, 129),
-    }
-
-    ls_of_region_dicts = []
-
-    for sublist in ls:
-        nums = sublist[0]
-        regions = {}
-
-        # Populate regions by checking which IMGT region each number falls into
-        for region_name, region_range in imgt_regions.items():
-            regions[region_name] = [num for num in nums if num[0][0] in region_range]
-
-        ls_of_region_dicts.append(regions)
-
-    return ls_of_region_dicts
