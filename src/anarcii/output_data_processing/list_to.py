@@ -1,63 +1,127 @@
-import re
+from __future__ import annotations
 
-import pandas as pd
+import csv
+from collections.abc import Iterable, Iterator
+from itertools import chain, pairwise, repeat
+from pathlib import Path
+from typing import TypeAlias
+
+from sortedcontainers import SortedSet
+
+NumberedResidue: TypeAlias = tuple[tuple[int, str], str]
+NumberedResidues: TypeAlias = list[NumberedResidue] | tuple[NumberedResidue, ...]
+
+# For IMGT, insertions are numbered in reverse lexicographic order at these positions.
+imgt_reversed = 33, 61, 112
 
 
-def write_csv(ls, filename=None):
-    # Works on the simple output
+def numbered_sequence_dict(numbering: NumberedResidues) -> dict[str, str]:
+    """
+    Convert a list or tuple of numbered residues to a dictionary.
+
+    Each numbering `tuple[int, str]` of residue number and insertion character is
+    coerced into a string key by concatenating the integer and string parts, stripping
+    blank insertion characters.  The residue letter is taken as the corresponding value.
+
+    Args:
+        numbering: A list or tuple of tuples of the form
+                   ((residue number, insertion character), residue letter)
+
+    Returns:
+        A dictionary with the concatenated numbering strings as keys and the residue
+        letters as values
+    """
+    return {str(num) + ins.strip(): res for (num, ins), res in numbering}
+
+
+def _imgt_order_segments(numbers: SortedSet) -> Iterator[Iterable[str]]:
+    """
+    Sort IMGT residue numbers, taking into account reversed numbering for insertions.
+
+    Args:
+        numbers: A SortedSet of residue number strings.
+
+    Yields:
+        An iterable of ordered residue number strings.
+    """
+    half_open = True, False
+    for low, high in pairwise((None, *imgt_reversed)):
+        # The first range is open-ended, so we use None as the lower bound.
+        yield numbers.irange((low + 1,) if low else None, (high,), inclusive=half_open)
+        # Reverse the insertions in the latter half of each CDR.
+        yield numbers.irange((high,), (high + 1,), inclusive=half_open, reverse=True)
+
+    # Finally, yield all the remaining numbers after the CDR3 insertion region.
+    yield numbers.irange(minimum=(high + 1,))
+
+
+def imgt_order(numbers: SortedSet) -> Iterable[str]:
+    """
+    Sort IMGT residue numbers, taking into account reversed numbering for insertions.
+
+    Args:
+        numbers: A SortedSet of residue number strings.
+
+    Returns:
+        An iterable of ordered residue number strings.
+    """
+    # Sort the segments and concatenate them
+    return chain.from_iterable(_imgt_order_segments(numbers))
+
+
+def write_csv(numbered: dict, path: Path) -> None:
+    """
+    Write an ANARCII model results dictionary to a CSV file.
+
+    The results dictionary may contain multiple numbered sequences, which will be
+    aligned when written to the CSV file.  The file will contain the following columns:
+    - Name: The name of the sequence.
+    - Chain: The sequence's chain type ('F' in the case of a failure).
+    - Score: The model's score for its numbering of the sequence.
+    - Query start: The position of the first residue numbered by the model.
+    - Query end: The position of the last residue numbered by the model.
+    - One column for each residue number present in any of the sequences.  Residue
+      numbers 1–128 are always included.  Residue columns are sorted in ascending number
+      order, except in the case of IMGT numbering, where the system of inward numbering
+      of CDR insertions is respected.
+
+    In the table of sequences, residues are represented by their one-letter codes, or by
+    '-' for absences.
+
+    Args:
+        numbered:  An ANARCII model results dictionary.
+        path:      The path at which to write the CSV file.
+    """
+    metadata_columns = "Name", "Chain", "Score", "Query start", "Query end"
+    required_residue_numbers = zip(range(1, 129), repeat(" "))
+    residue_numbers = SortedSet(required_residue_numbers)
+
     rows = []
-    for sublist in ls:
-        row_dict = {}
-        # Two rows for each sublist:
-        # one for the first and
-        # one for the second element of the tuples
+    for name, result in numbered.items():
+        numbering = result.get("numbering", [])
+        residue_numbers.update(number for number, _ in numbering)
 
-        nums = sublist[0]
-        name = sublist[1]["query_name"]
-        chain = sublist[1]["chain_type"]
-        score = sublist[1]["score"]
+        rows.append(
+            {
+                "Name": name,
+                "Chain": result["chain_type"],
+                "Score": result["score"],
+                "Query start": result.get("query_start"),
+                "Query end": result.get("query_end"),
+                **numbered_sequence_dict(numbering),
+            }
+        )
 
-        row_dict["Name"] = name
-        # Gives an F for the first letter in Fail.
-        row_dict["Chain"] = chain
-        row_dict["Score"] = score
+    # Assume all sequences use the same scheme.
+    # There's no point doing multi-sequence alignment otherwise.
+    if result["scheme"] == "imgt":
+        # Reverse certain insertions as necessary for IMGT numbering.
+        residue_numbers = imgt_order(residue_numbers)
 
-        if chain == "F":
-            rows.append(row_dict)
-            continue
+    residue_columns = (str(num) + ins.strip() for num, ins in residue_numbers)
+    columns = chain(metadata_columns, residue_columns)
 
-        for res in nums:
-            key = str(res[0][0]) + res[0][1].strip()
-            value = res[1].strip()
-            row_dict[key] = value
-
-        rows.append(row_dict)
-
-    df = pd.DataFrame(rows)
-
-    # Function to split into numeric and alphabetical parts
-    def split_key(column):
-        match = re.match(r"(\d+)([A-Z]?)", column)
-        if match:
-            num_part = int(match.group(1))  # Numeric part as integer
-            letter_part = match.group(2)  # Alphabetical part as string
-            return (num_part, letter_part)
-        else:
-            # For columns that don't match, return a tuple that will sort them
-            # after the ones that do match.
-            # Here, we use a large number and the column itself as a fallback.
-            return (float("inf"), column)
-
-    # # Sorting the columns list based on the custom key
-    sorted_columns = sorted(
-        [col for col in df.columns if col not in {"Name", "Chain", "Score"}],
-        key=split_key,
-    )
-    sorted_columns = ["Name", "Chain", "Score"] + sorted_columns
-
-    df = df[sorted_columns]
-
-    if filename:
-        df.to_csv(filename, index=False, header=True)
-
-    return df
+    with open(path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=columns, restval="-")
+        writer.writeheader()
+        writer.writerows(rows)

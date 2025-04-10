@@ -11,7 +11,7 @@ license-files = ["LICENCE"]
 authors = [
   { name = "Alexander Greenshields Watson", email = "opig@stats.ox.ac.uk" },
 ]
-dependencies = ["gemmi", "msgpack", "numpy", "psutil", "torch"]
+dependencies = ["gemmi", "msgpack", "numpy", "psutil", "sortedcontainers", "torch"]
 
 [project.scripts]
 anarcii = "anarcii.cli:main"
