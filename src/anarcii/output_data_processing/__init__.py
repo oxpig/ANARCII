@@ -179,20 +179,17 @@ def _stream_csv_to_file(numbered: Iterable[dict], f: TextIO) -> None:
 
     # A second pass over the input iterable to write the numbered sequences to the file.
     for results in numbered:
-        rows = []
-        for name, result in results.items():
-            numbering = result.get("numbering", [])
-
-            rows.append(
-                {
-                    "Name": name,
-                    "Chain": result["chain_type"],
-                    "Score": result["score"],
-                    "Query start": result.get("query_start"),
-                    "Query end": result.get("query_end"),
-                    **numbered_sequence_dict(numbering),
-                }
-            )
+        rows = [
+            {
+                "Name": name,
+                "Chain": result["chain_type"],
+                "Score": result["score"],
+                "Query start": result.get("query_start"),
+                "Query end": result.get("query_end"),
+                **numbered_sequence_dict(result.get("numbering", [])),
+            }
+            for name, result in results.items()
+        ]
 
         writer.writerows(rows)
 
