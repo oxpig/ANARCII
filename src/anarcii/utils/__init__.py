@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Iterator
 from itertools import chain, pairwise
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 import msgpack
 
@@ -30,23 +30,37 @@ def to_msgpack(object: Any, path: Path | str | None) -> Path:
     return Path(path).absolute()
 
 
+def _open_msgpack_map_file(
+    f: BinaryIO, chunk_size: int = 100 * 1024
+) -> Iterator[dict[Any, Any]]:
+    """
+    Unpack a MessagePack map from a file object opened in binary mode.
+
+    Args:
+        f:           A file object containing a MessagePack map as the first entry.
+        chunk_size:  Maximum number of entries to yield at a time.
+
+    Yields:
+        A dictionary containing no more than `chunk_size` entries at a time.
+    """
+    unpacker = msgpack.Unpacker(f, use_list=False)
+    map_length = unpacker.read_map_header()
+    for bounds in pairwise(chain(range(0, map_length, chunk_size), (map_length,))):
+        yield {unpacker.unpack(): unpacker.unpack() for _ in range(*bounds)}
+
+
 def from_msgpack_map(
     path: Path | str, chunk_size: int = 100 * 1024
 ) -> Iterator[dict[Any, Any]]:
     """
     Unpack a MessagePack map from a file.
 
-    Yield a dictionary containing no more than `chunk_size` entries at a time.
-
     Args:
         path:        A file containing a MessagePack map as the first entry.
         chunk_size:  Maximum number of entries to yield at a time.
 
     Yields:
-        A dictionary containing up to `chunk_size` entries at a time.
+        A dictionary containing no more than `chunk_size` entries at a time.
     """
     with open(path, "rb") as f:
-        unpacker = msgpack.Unpacker(f, use_list=False)
-        map_length = unpacker.read_map_header()
-        for bounds in pairwise(chain(range(0, map_length, chunk_size), (map_length,))):
-            yield {unpacker.unpack(): unpacker.unpack() for _ in range(*bounds)}
+        yield from _open_msgpack_map_file(f, chunk_size)

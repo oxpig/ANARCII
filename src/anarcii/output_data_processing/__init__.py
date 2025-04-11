@@ -4,9 +4,11 @@ import csv
 from collections.abc import Iterable, Iterator
 from itertools import chain, pairwise
 from pathlib import Path
-from typing import TextIO, TypeAlias
+from typing import BinaryIO, TextIO, TypeAlias
 
 from sortedcontainers import SortedSet
+
+from anarcii.utils import _open_msgpack_map_file
 
 NumberedResidue: TypeAlias = tuple[tuple[int, str], str]
 NumberedResidues: TypeAlias = list[NumberedResidue] | tuple[NumberedResidue, ...]
@@ -132,12 +134,18 @@ def write_csv(numbered: dict, path: Path | str) -> None:
         writer.writerows(rows)
 
 
-def _stream_csv_to_file(numbered: Iterable[dict], f: TextIO) -> None:
+def _stream_msgpack_file_to_csv_file(
+    f: BinaryIO, g: TextIO, chunk_size: int = 100 * 1024
+) -> None:
     """
-    Stream an iterable of ANARCII model results dictionary to a single CSV file.
+    Stream serialised ANARCII model results from MessagePack to CSV.
 
-    The results dictionaries may each contain multiple numbered sequences, which will be
-    aligned when written to the CSV file.  The file will contain the following columns:
+    Standard ANARCII model results are read from a MessagePack file containing a single
+    map.  The results map may contain multiple numbered sequences, which will be aligned
+    when written to the CSV file.  Sequences will be streamed from the MessagePack map
+    to the CSV file in batches of `chunk_size` sequences.
+
+    The CSV file will contain the following columns:
     - Name: The name of the sequence.
     - Chain: The sequence's chain type ('F' in the case of a failure).
     - Score: The model's score for its numbering of the sequence.
@@ -154,14 +162,17 @@ def _stream_csv_to_file(numbered: Iterable[dict], f: TextIO) -> None:
     '-' for absences.
 
     Args:
-        numbered:  An iterable of ANARCII model results dictionaries.
-        f:         A file object for the output.  Must be opened in text mode with
-                   `newline=''`.
+        f:           A file object for the MessagePack input.  Must be opened in binary
+                     mode and contain a MessagePack map as the first entry.
+        g:           A file object for the output.  Must be opened in text mode with
+                     `newline=''`.
+        chunk_size:  Streaming chunk size.  Number of sequences to read, convert and
+                     write at a time.
     """
     residue_numbers = SortedSet(required_residue_numbers)
 
-    # A first pass over the input iterable to collect all residue numbers.
-    for results in numbered:
+    # A first pass over the MessagePack map to collect all residue numbers.
+    for results in _open_msgpack_map_file(f, chunk_size):
         for result in results.values():
             residue_numbers.update(number for number, _ in result.get("numbering", []))
 
@@ -174,11 +185,12 @@ def _stream_csv_to_file(numbered: Iterable[dict], f: TextIO) -> None:
     residue_columns = (str(num) + ins.strip() for num, ins in residue_numbers)
     columns = [*metadata_columns, *residue_columns]
 
-    writer = csv.DictWriter(f, fieldnames=columns, restval="-")
+    writer = csv.DictWriter(g, fieldnames=columns, restval="-")
     writer.writeheader()
 
     # A second pass over the input iterable to write the numbered sequences to the file.
-    for results in numbered:
+    f.seek(0)
+    for results in _open_msgpack_map_file(f, chunk_size):
         rows = [
             {
                 "Name": name,
@@ -194,12 +206,18 @@ def _stream_csv_to_file(numbered: Iterable[dict], f: TextIO) -> None:
         writer.writerows(rows)
 
 
-def stream_csv(numbered: Iterable[dict], path: Path | str) -> None:
+def stream_msgpack_to_csv(
+    msgpack_map_path: Path | str, csv_path: Path | str, chunk_size: int = 100 * 1024
+) -> None:
     """
-    Stream an iterable of ANARCII model results dictionary to a single CSV file.
+    Stream serialised ANARCII model results from MessagePack to CSV.
 
-    The results dictionaries may each contain multiple numbered sequences, which will be
-    aligned when written to the CSV file.  The file will contain the following columns:
+    Standard ANARCII model results are read from a MessagePack file containing a single
+    map.  The results map may contain multiple numbered sequences, which will be aligned
+    when written to the CSV file.  Sequences will be streamed from the MessagePack map
+    to the CSV file in batches of `chunk_size` sequences.
+
+    The CSV file will contain the following columns:
     - Name: The name of the sequence.
     - Chain: The sequence's chain type ('F' in the case of a failure).
     - Score: The model's score for its numbering of the sequence.
@@ -216,9 +234,11 @@ def stream_csv(numbered: Iterable[dict], path: Path | str) -> None:
     '-' for absences.
 
     Args:
-        numbered:  An iterable of ANARCII model results dictionaries.
-        path:      The path at which to write the CSV file.
-
+        msgpack_map_path:  Path to a MessagePack file.  It must contain a map as the
+                           first entry, representing an ANARCII model result dictionary.
+        path:              Path for the output CSV file.
+        chunk_size:        Streaming chunk size.  Number of sequences to read, convert
+                           and write at a time.
     """
-    with open(path, "w", newline="") as f:
-        _stream_csv_to_file(numbered, f)
+    with open(msgpack_map_path, "rb") as f, open(csv_path, "w", newline="") as g:
+        _stream_msgpack_file_to_csv_file(f, g, chunk_size)
