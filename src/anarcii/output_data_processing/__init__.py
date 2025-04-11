@@ -124,7 +124,7 @@ def write_csv(numbered: dict, path: Path | str) -> None:
         residue_numbers = imgt_order(residue_numbers)
 
     residue_columns = (str(num) + ins.strip() for num, ins in residue_numbers)
-    columns = chain(metadata_columns, residue_columns)
+    columns = [*metadata_columns, *residue_columns]
 
     with open(path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=columns, restval="-")
@@ -172,7 +172,7 @@ def _stream_csv_to_file(numbered: Iterable[dict], f: TextIO) -> None:
         residue_numbers = imgt_order(residue_numbers)
 
     residue_columns = (str(num) + ins.strip() for num, ins in residue_numbers)
-    columns = chain(metadata_columns, residue_columns)
+    columns = [*metadata_columns, *residue_columns]
 
     writer = csv.DictWriter(f, fieldnames=columns, restval="-")
     writer.writeheader()
