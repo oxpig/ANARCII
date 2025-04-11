@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 from collections.abc import Iterable, Iterator
-from itertools import chain, pairwise, repeat
+from itertools import chain, pairwise
 from pathlib import Path
 from typing import TextIO, TypeAlias
 
@@ -13,6 +13,11 @@ NumberedResidues: TypeAlias = list[NumberedResidue] | tuple[NumberedResidue, ...
 
 # For IMGT, insertions are numbered in reverse lexicographic order at these positions.
 imgt_reversed = 33, 61, 112
+
+
+# Minimal CSV columns.
+metadata_columns = "Name", "Chain", "Score", "Query start", "Query end"
+required_residue_numbers = [(n, " ") for n in range(1, 129)]
 
 
 def numbered_sequence_dict(numbering: NumberedResidues) -> dict[str, str]:
@@ -94,8 +99,6 @@ def write_csv(numbered: dict, path: Path | str) -> None:
         numbered:  An ANARCII model results dictionary.
         path:      The path at which to write the CSV file.
     """
-    metadata_columns = "Name", "Chain", "Score", "Query start", "Query end"
-    required_residue_numbers = zip(range(1, 129), repeat(" "))
     residue_numbers = SortedSet(required_residue_numbers)
 
     rows = []
@@ -155,8 +158,6 @@ def _stream_csv_to_file(numbered: Iterable[dict], f: TextIO) -> None:
         f:         A file object for the output.  Must be opened in text mode with
                    `newline=''`.
     """
-    metadata_columns = "Name", "Chain", "Score", "Query start", "Query end"
-    required_residue_numbers = zip(range(1, 129), repeat(" "))
     residue_numbers = SortedSet(required_residue_numbers)
 
     # A first pass over the input iterable to collect all residue numbers.
