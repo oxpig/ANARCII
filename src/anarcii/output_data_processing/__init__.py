@@ -182,7 +182,6 @@ def _stream_csv_to_file(numbered: Iterable[dict], f: TextIO) -> None:
         rows = []
         for name, result in results.items():
             numbering = result.get("numbering", [])
-            residue_numbers.update(number for number, _ in numbering)
 
             rows.append(
                 {
