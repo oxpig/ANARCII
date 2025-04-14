@@ -19,7 +19,7 @@ imgt_reversed = 33, 61, 112
 
 # Minimal CSV columns.
 metadata_columns = "Name", "Chain", "Score", "Query start", "Query end"
-required_residue_numbers = [(n, " ") for n in range(1, 129)]
+required_residue_numbers = {(n, " ") for n in range(1, 129)}
 
 
 def numbered_sequence_dict(numbering: NumberedResidues) -> dict[str, str]:
@@ -41,7 +41,9 @@ def numbered_sequence_dict(numbering: NumberedResidues) -> dict[str, str]:
     return {str(num) + ins.strip(): res for (num, ins), res in numbering}
 
 
-def _imgt_order_segments(numbers: SortedSet) -> Iterator[Iterable[str]]:
+def _imgt_order_segments(
+    numbers: Iterable[tuple[int, str]],
+) -> Iterator[Iterator[tuple[int, str]]]:
     """
     Sort IMGT residue numbers, taking into account reversed numbering for insertions.
 
@@ -51,6 +53,7 @@ def _imgt_order_segments(numbers: SortedSet) -> Iterator[Iterable[str]]:
     Yields:
         An iterable of ordered residue number strings.
     """
+    numbers = SortedSet(numbers)
     half_open = True, False
     for low, high in pairwise((None, *imgt_reversed)):
         # The first range is open-ended, so we use None as the lower bound.
@@ -62,7 +65,7 @@ def _imgt_order_segments(numbers: SortedSet) -> Iterator[Iterable[str]]:
     yield numbers.irange(minimum=(high + 1,))
 
 
-def imgt_order(numbers: SortedSet) -> Iterable[str]:
+def imgt_order(numbers: Iterable[tuple[int, str]]) -> Iterator[tuple[int, str]]:
     """
     Sort IMGT residue numbers, taking into account reversed numbering for insertions.
 
@@ -101,7 +104,7 @@ def write_csv(numbered: dict, path: Path | str) -> None:
         numbered:  An ANARCII model results dictionary.
         path:      The path at which to write the CSV file.
     """
-    residue_numbers = SortedSet(required_residue_numbers)
+    residue_numbers = required_residue_numbers
 
     rows = []
     for name, result in numbered.items():
@@ -124,6 +127,8 @@ def write_csv(numbered: dict, path: Path | str) -> None:
     if result["scheme"] == "imgt":
         # Reverse certain insertions as necessary for IMGT numbering.
         residue_numbers = imgt_order(residue_numbers)
+    else:
+        residue_numbers = sorted(residue_numbers)
 
     residue_columns = (str(num) + ins.strip() for num, ins in residue_numbers)
     columns = [*metadata_columns, *residue_columns]
@@ -169,7 +174,7 @@ def _stream_msgpack_file_to_csv_file(
         chunk_size:  Streaming chunk size.  Number of sequences to read, convert and
                      write at a time.
     """
-    residue_numbers = SortedSet(required_residue_numbers)
+    residue_numbers = required_residue_numbers
 
     # A first pass over the MessagePack map to collect all residue numbers.
     for results in _open_msgpack_map_file(f, chunk_size):
@@ -181,6 +186,8 @@ def _stream_msgpack_file_to_csv_file(
     if result["scheme"] == "imgt":
         # Reverse certain insertions as necessary for IMGT numbering.
         residue_numbers = imgt_order(residue_numbers)
+    else:
+        residue_numbers = sorted(residue_numbers)
 
     residue_columns = (str(num) + ins.strip() for num, ins in residue_numbers)
     columns = [*metadata_columns, *residue_columns]
