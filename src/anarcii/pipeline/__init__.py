@@ -256,7 +256,7 @@ class Anarcii:
                 g.write(packer.pack_map_header(n_seqs))
 
             print(
-                f"Converting {n_seqs} sequences to {scheme} "
+                f" Converting {n_seqs} sequences to {scheme} "
                 "scheme. This may take a while."
             )
 
@@ -268,13 +268,15 @@ class Anarcii:
                     for item in chain.from_iterable(converted_seqs.items()):
                         f.write(packer.pack(item))
 
-            print(f"Converted sequences saved to {self._last_converted_output}.")
+            print(f" Converted sequences saved to {self._last_converted_output}. \n")
+
+            self._alt_scheme = scheme
 
         else:
             self._last_converted_output = convert_number_scheme(
                 self._last_numbered_output, scheme
             )
-            print(f"Last output converted to {scheme}")
+            print(f"Last output converted to {scheme} \n")
 
             # The problem is we cannot write over last numbered output
             # Instead, the converted scheme is written to a new object
@@ -301,7 +303,7 @@ class Anarcii:
             self._last_numbered_output, Path
         ):
             print(
-                f"Sequences are numbered in scheme: {self._alt_scheme} \n"
+                f" Sequences are numbered in scheme: {self._alt_scheme} \n"
                 f" Converting first {self.max_seqs_len} sequences to legacy format."
                 " To convert more, increase the max_seqs_len parameter or"
                 " iterate over the msgpack file using utils.from_msgpack_map()"
@@ -315,7 +317,6 @@ class Anarcii:
 
         elif isinstance(self._last_numbered_output, Path):
             print(
-                f"Converting first {self.max_seqs_len} sequences to legacy format."
                 f" Converting first {self.max_seqs_len} sequences to legacy format."
                 " To convert more, increase the max_seqs_len parameter or"
                 " iterate over the msgpack file using utils.from_msgpack_map()"
