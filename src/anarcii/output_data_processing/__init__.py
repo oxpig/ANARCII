@@ -105,7 +105,7 @@ def write_csv(numbered: dict, path: Path | str) -> None:
 
     rows = []
     for name, result in numbered.items():
-        numbering = result.get("numbering", [])
+        numbering = result["numbering"] or []
         residue_numbers.update(number for number, _ in numbering)
 
         rows.append(
@@ -113,8 +113,8 @@ def write_csv(numbered: dict, path: Path | str) -> None:
                 "Name": name,
                 "Chain": result["chain_type"],
                 "Score": result["score"],
-                "Query start": result.get("query_start"),
-                "Query end": result.get("query_end"),
+                "Query start": result["query_start"],
+                "Query end": result["query_end"],
                 **numbered_sequence_dict(numbering),
             }
         )
@@ -174,7 +174,7 @@ def _stream_msgpack_file_to_csv_file(
     # A first pass over the MessagePack map to collect all residue numbers.
     for results in _open_msgpack_map_file(f, chunk_size):
         for result in results.values():
-            residue_numbers.update(number for number, _ in result.get("numbering", []))
+            residue_numbers.update(number for number, _ in (result["numbering"] or []))
 
     # Assume all sequences use the same scheme.  In any case, there's no point aligning
     # multiple sequences if they have have been numbered using different schemes.
@@ -196,9 +196,9 @@ def _stream_msgpack_file_to_csv_file(
                 "Name": name,
                 "Chain": result["chain_type"],
                 "Score": result["score"],
-                "Query start": result.get("query_start"),
-                "Query end": result.get("query_end"),
-                **numbered_sequence_dict(result.get("numbering", [])),
+                "Query start": result["query_start"],
+                "Query end": result["query_end"],
+                **numbered_sequence_dict(result["numbering"] or []),
             }
             for name, result in results.items()
         ]
