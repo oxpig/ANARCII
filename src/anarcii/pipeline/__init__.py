@@ -283,8 +283,86 @@ class Anarcii:
 
             return self._last_converted_output
 
+    def to_legacy(self):
+        """
+        Convert the last numbered output to a legacy format.
+        This follows the same logic as to_scheme, but uses the legacy_output function.
+        However it does not write to a file, it just returns the legacy output.
+        """
+        if self._last_numbered_output is None:
+            raise ValueError("No output to convert. Run the model first.")
+
+        elif self._last_converted_output and not isinstance(
+            self._last_numbered_output, Path
+        ):
+            return legacy_output(self._last_converted_output, self.verbose)
+
+        elif self._last_converted_output and isinstance(
+            self._last_numbered_output, Path
+        ):
+            print(
+                f"Sequences are numbered in scheme: {self._alt_scheme} \n"
+                f" Converting first {self.max_seqs_len} sequences to legacy format."
+                " To convert more, increase the max_seqs_len parameter or"
+                " iterate over the msgpack file using utils.from_msgpack_map()"
+                " and apply the legacy_output function."
+                " See documentation (GitHub Wiki) for more details."
+            )
+
+            gen_object = from_msgpack_map(self._last_converted_output)
+            dt = next(gen_object)
+            return legacy_output(dt, self.verbose)
+
+        elif isinstance(self._last_numbered_output, Path):
+            print(
+                f"Converting first {self.max_seqs_len} sequences to legacy format."
+                f" Converting first {self.max_seqs_len} sequences to legacy format."
+                " To convert more, increase the max_seqs_len parameter or"
+                " iterate over the msgpack file using utils.from_msgpack_map()"
+                " and apply the legacy_output function."
+                " See documentation (GitHub Wiki) for more details."
+            )
+
+            gen_object = from_msgpack_map(self._last_numbered_output)
+            dt = next(gen_object)
+            return legacy_output(dt, self.verbose)
+
+        else:
+            return legacy_output(self._last_numbered_output, self.verbose)
+
     def to_msgpack(self, file_path):
         # 1. Model has not been run - raise error
+        if self._last_numbered_output is None:
+            raise ValueError("No output to save. Run the model first.")
+
+        # 2. Model has been run and converted to alt scheme but does not exceed max_len.
+        elif self._last_converted_output and not isinstance(
+            self._last_numbered_output, Path
+        ):
+            to_msgpack(self._last_converted_output, file_path)
+            print(
+                f"Last output saved to {file_path} in alternate scheme: "
+                f"{self._alt_scheme}."
+            )
+
+        # 3. Model has been run, converted to alt scheme and exceeds max_len!
+        elif self._last_converted_output and isinstance(
+            self._last_numbered_output, Path
+        ):
+            # Move the converted msgpack file to the file path specified in argument.
+            shutil.copy(self._last_converted_output, file_path)
+
+        # 4. Model has been run and exceeds max_len (no conversion).
+        elif isinstance(self._last_numbered_output, Path):
+            # Move the msgpack file to the file path specified in argument.
+            shutil.copy(self._last_numbered_output, file_path)
+
+        # 5. Model has been run and does not exceed max_len (no conversion).
+        else:
+            to_msgpack(self._last_numbered_output, file_path)
+            print(f"Last output saved to {file_path}.")
+
+    def to_csv(self, file_path):
         if self._last_numbered_output is None:
             raise ValueError("No output to save. Run the model first.")
 

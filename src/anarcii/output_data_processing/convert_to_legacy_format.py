@@ -18,11 +18,11 @@ def legacy_output(dt, verbose):
 
         # Changes for Ody needed here.
         new_dict = {}
-        new_dict["species"] = None
-        new_dict["scheme"] = "imgt"
+        new_dict["chain_type"] = value["chain_type"]
+        new_dict["scheme"] = value["scheme"]
         new_dict["query_name"] = key
         new_dict["query_start"] = value["query_start"]
-        new_dict["end"] = value["query_end"]
+        new_dict["query_end"] = value["query_end"]
 
         alignment_details.append([new_dict])
 
