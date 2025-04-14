@@ -291,45 +291,28 @@ class Anarcii:
         This follows the same logic as to_scheme, but uses the legacy_output function.
         However it does not write to a file, it just returns the legacy output.
         """
-        if self._last_numbered_output is None:
-            raise ValueError("No output to convert. Run the model first.")
-
-        elif self._last_converted_output and not isinstance(
-            self._last_numbered_output, Path
-        ):
-            return legacy_output(self._last_converted_output, self.verbose)
-
-        elif self._last_converted_output and isinstance(
-            self._last_numbered_output, Path
-        ):
-            print(
-                f" Sequences are numbered in scheme: {self._alt_scheme} \n"
-                f" Converting first {self.max_seqs_len} sequences to legacy format."
-                " To convert more, increase the max_seqs_len parameter or"
-                " iterate over the msgpack file using utils.from_msgpack_map()"
-                " and apply the legacy_output function."
-                " See documentation (GitHub Wiki) for more details."
-            )
-
-            gen_object = from_msgpack_map(self._last_converted_output)
-            dt = next(gen_object)
-            return legacy_output(dt, self.verbose)
-
-        elif isinstance(self._last_numbered_output, Path):
-            print(
-                f" Converting first {self.max_seqs_len} sequences to legacy format."
-                " To convert more, increase the max_seqs_len parameter or"
-                " iterate over the msgpack file using utils.from_msgpack_map()"
-                " and apply the legacy_output function."
-                " See documentation (GitHub Wiki) for more details."
-            )
-
-            gen_object = from_msgpack_map(self._last_numbered_output)
-            dt = next(gen_object)
-            return legacy_output(dt, self.verbose)
+        last_object = self._last_converted_output or self._last_numbered_output
+        last_scheme = self._alt_scheme or "imgt"
+        if last_object is None:
+            raise ValueError("No output to save. Run the model first.")
 
         else:
-            return legacy_output(self._last_numbered_output, self.verbose)
+            if not isinstance(last_object, Path):
+                return legacy_output(last_object, self.verbose)
+
+            else:
+                print(
+                    f" Sequences are numbered in scheme: {last_scheme} \n"
+                    f" Converting first {self.max_seqs_len} sequences to legacy format."
+                    " To convert more, increase the max_seqs_len parameter or"
+                    " iterate over the msgpack file using utils.from_msgpack_map()"
+                    " and apply the legacy_output function."
+                    " See documentation (GitHub Wiki) for more details."
+                )
+
+                gen_object = from_msgpack_map(last_object)
+                dt = next(gen_object)
+                return legacy_output(dt, self.verbose)
 
     def to_msgpack(self, file_path):
         # 1. Model has not been run - raise error
