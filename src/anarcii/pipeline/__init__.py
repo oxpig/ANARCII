@@ -346,37 +346,6 @@ class Anarcii:
             to_msgpack(self._last_numbered_output, file_path)
             print(f"Last output saved to {file_path}.")
 
-    def to_csv(self, file_path):
-        if self._last_numbered_output is None:
-            raise ValueError("No output to save. Run the model first.")
-
-        # 2. Model has been run and converted to alt scheme but does not exceed max_len.
-        elif self._last_converted_output and not isinstance(
-            self._last_numbered_output, Path
-        ):
-            to_msgpack(self._last_converted_output, file_path)
-            print(
-                f"Last output saved to {file_path} in alternate scheme: "
-                f"{self._alt_scheme}."
-            )
-
-        # 3. Model has been run, converted to alt scheme and exceeds max_len!
-        elif self._last_converted_output and isinstance(
-            self._last_numbered_output, Path
-        ):
-            # Move the converted msgpack file to the file path specified in argument.
-            shutil.copy(self._last_converted_output, file_path)
-
-        # 4. Model has been run and exceeds max_len (no conversion).
-        elif isinstance(self._last_numbered_output, Path):
-            # Move the msgpack file to the file path specified in argument.
-            shutil.copy(self._last_numbered_output, file_path)
-
-        # 5. Model has been run and does not exceed max_len (no conversion).
-        else:
-            to_msgpack(self._last_numbered_output, file_path)
-            print(f"Last output saved to {file_path}.")
-
     def number_with_type(self, seqs: dict[str, str], seq_type):
         model = ModelRunner(
             seq_type, self.mode, self.batch_size, self.device, self.verbose
