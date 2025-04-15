@@ -230,8 +230,7 @@ class Anarcii:
         if structure:
             write_pdbx_file(structure)
 
-        else:
-            return self._last_numbered_output
+        return self._last_numbered_output
 
     def to_scheme(self, scheme="imgt"):
         # Check if there's output to save
