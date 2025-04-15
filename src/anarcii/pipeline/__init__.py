@@ -97,7 +97,6 @@ class Anarcii:
         batch_size: int = 32,
         cpu: bool = False,
         ncpu: int = -1,
-        legacy_format: bool = False,  # legacy for old ANARCI
         verbose: bool = False,
         max_seqs_len=1024 * 100,
     ):
@@ -138,7 +137,7 @@ class Anarcii:
             else:
                 print("\nRecommended batch size for CPU: 8.\n")
 
-    def number(self, seqs: Input, legacy_format=False):
+    def number(self, seqs: Input):
         seqs, structure = coerce_input(seqs)
         if not structure:
             # Do not split sequences on delimiter characters if the input was in PDBx or
@@ -231,8 +230,6 @@ class Anarcii:
         if structure:
             write_pdbx_file(structure)
 
-        if legacy_format and not serialise:
-            return legacy_output(self._last_numbered_output, verbose=self.verbose)
         else:
             return self._last_numbered_output
 
