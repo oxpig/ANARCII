@@ -297,10 +297,7 @@ class Anarcii:
             raise ValueError("No output to save. Run the model first.")
 
         else:
-            if not isinstance(last_object, Path):
-                return legacy_output(last_object, self.verbose)
-
-            else:
+            if isinstance(last_object, Path):
                 print(
                     f" Sequences are numbered in scheme: {last_scheme} \n"
                     f" Converting first {self.max_seqs_len} sequences to legacy format."
@@ -309,10 +306,9 @@ class Anarcii:
                     " and apply the legacy_output function."
                     " See documentation (GitHub Wiki) for more details."
                 )
-
-                gen_object = from_msgpack_map(last_object)
-                dt = next(gen_object)
-                return legacy_output(dt, self.verbose)
+                return legacy_output(next(from_msgpack_map(last_object)), self.verbose)
+            else:
+                return legacy_output(last_object, self.verbose)
 
     def to_msgpack(self, file_path):
         # 1. Model has not been run - raise error
