@@ -299,12 +299,14 @@ class Anarcii:
         else:
             if isinstance(last_object, Path):
                 print(
-                    f" Sequences are numbered in scheme: {last_scheme} \n"
-                    f" Converting first {self.max_seqs_len} sequences to legacy format."
-                    " To convert more, increase the max_seqs_len parameter or"
-                    " iterate over the msgpack file using utils.from_msgpack_map()"
-                    " and apply the legacy_output function."
-                    " See documentation (GitHub Wiki) for more details."
+                    f" Sequences are numbered in scheme: {last_scheme}\n"
+                    f" Converting first {self.max_seqs_len} sequences to legacy "
+                    "format. To convert more, increase the max_seqs_len parameter or "
+                    "iterate over the msgpack file using "
+                    "anarcii.utils.from_msgpack_map and apply the legacy_output "
+                    "function. For more details, see\n "
+                    "https://github.com/ALGW71/ANARCII-DEV/wiki/"
+                    "Allowed-input-formats#more-than-100k-sequences"
                 )
                 return legacy_output(next(from_msgpack_map(last_object)), self.verbose)
             else:
