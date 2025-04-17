@@ -4,20 +4,24 @@ build-backend = "hatchling.build"
 
 [project]
 name = "anarcii"
-dynamic = ["version"]
-description = "A sequence numbering tool called ANARCII that..."
+version = "0.2.1"
+description = "A language model suite for numbering antigen receptor sequences."
 readme = "README.md"
 license-files = ["LICENCE"]
 authors = [
   { name = "Alexander Greenshields Watson", email = "opig@stats.ox.ac.uk" },
 ]
-dependencies = ["gemmi", "msgpack", "numpy", "psutil", "sortedcontainers", "torch"]
+dependencies = [
+  "gemmi",
+  "msgpack",
+  "numpy",
+  "psutil",
+  "sortedcontainers",
+  "torch",
+]
 
 [project.scripts]
 anarcii = "anarcii.cli:main"
-
-[tool.hatch.version]
-path = "src/anarcii/__init__.py"
 
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
@@ -41,3 +45,24 @@ lint.select = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101"] # Allow assert statements in test files
+
+[tool.bumpversion]
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+serialize = ["{major}.{minor}.{patch}"]
+search = "{current_version}"
+replace = "{new_version}"
+regex = false
+ignore_missing_version = false
+ignore_missing_files = false
+tag = true
+sign_tags = true
+tag_name = "v{new_version}"
+tag_message = "Bump version: {current_version} → {new_version}"
+allow_dirty = false
+commit = true
+message = "Bump version: {current_version} → {new_version}"
+moveable_tags = []
+commit_args = ""
+setup_hooks = []
+pre_commit_hooks = []
+post_commit_hooks = []
