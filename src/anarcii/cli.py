@@ -1,6 +1,7 @@
 import argparse
 import sys
 
+from anarcii import __version__
 from anarcii.pipeline import Anarcii
 
 parser = argparse.ArgumentParser(
@@ -50,6 +51,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "-v", "--verbose", action="store_true", help="Enable verbose output."
+)
+parser.add_argument(
+    "-V", "--version", action="version", version=f"%(prog)s {__version__}"
 )
 
 
