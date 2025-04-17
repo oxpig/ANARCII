@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "anarcii"
-dynamic = ["version"]
+version = "0.2.0"
 description = "A sequence numbering tool called ANARCII that..."
 readme = "README.md"
 license-files = ["LICENCE"]
@@ -15,9 +15,6 @@ dependencies = ["gemmi", "msgpack", "numpy", "psutil", "sortedcontainers", "torc
 
 [project.scripts]
 anarcii = "anarcii.cli:main"
-
-[tool.hatch.version]
-path = "src/anarcii/__init__.py"
 
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
