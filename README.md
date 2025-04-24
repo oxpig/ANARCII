@@ -36,10 +36,10 @@ bioRxiv 2025.04.16.648720; doi: https://doi.org/10.1101/2025.04.16.648720
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15274840.svg)](https://doi.org/10.5281/zenodo.15274840)
 
-Releases of this software are [archived on Zenodo](https://doi.org/10.5281/zenodo.15274840).  If you use ANARCII in your
-work, please cite the paper.  If you additionally want to cite the software
-specifically, this DOI always resolves to the Zenodo record for the latest
-version:
+Releases of this software are [archived on Zenodo](https://doi.org/10.5281/zenodo.15274840).
+If you use ANARCII in your work, please [cite the paper](#the-paper).  If you
+also want to cite the software specifically, this DOI always resolves to the
+Zenodo record for the latest version:
 
 <https://doi.org/10.5281/zenodo.15274840>
 
