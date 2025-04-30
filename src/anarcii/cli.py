@@ -1,9 +1,9 @@
 import argparse
 import sys
- 
+
 from anarcii import __version__
 from anarcii.pipeline import Anarcii
- 
+
 parser = argparse.ArgumentParser(
     description="Run the Anarcii model on sequences or a fasta file."
 )
@@ -16,7 +16,10 @@ parser.add_argument(
     type=str,
     default="antibody",
     choices=["antibody", "tcr", "vnar", "vhh", "shark", "unknown"],
-    help="Sequence type to process: antibody, tcr, vnar/vhh/shark or unknown (default: antibody).",
+    help=(
+        "Sequence type to process: antibody, tcr, vnar/vhh/shark or unknown"
+        "(default: antibody)."
+    ),
 )
 parser.add_argument(
     "-b",
@@ -45,7 +48,10 @@ parser.add_argument(
     type=int,
     default=102400,
     metavar="N",
-    help="Maximum number of sequences to process before moving to batch mode and saving the numbered sequences in MessagePack file (default: 102400).",
+    help=(
+        "Maximum number of sequences to process before moving to batch mode and "
+        "saving the numbered sequences in MessagePack file (default: 102400)."
+    ),
 )
 parser.add_argument(
     "-m",
@@ -60,7 +66,9 @@ parser.add_argument(
     type=str,
     choices=["martin", "kabat", "chothia", "imgt", "aho"],
     default="imgt",
-    help="Numbering scheme to use: martin, kabat, chothia, imgt, or aho (default: imgt).",
+    help=(
+        "Numbering scheme to use: martin, kabat, chothia, imgt, or aho (default: imgt)."
+    ),
 )
 parser.add_argument(
     "-o",
@@ -76,11 +84,11 @@ parser.add_argument(
 parser.add_argument(
     "-V", "--version", action="version", version=f"%(prog)s {__version__}"
 )
- 
- 
+
+
 def main(args=None):
     args = parser.parse_args(args)
- 
+
     # Initialize the model
     model = Anarcii(
         seq_type=args.seq_type,
@@ -89,15 +97,15 @@ def main(args=None):
         ncpu=args.ncpu,
         mode=args.mode,
         verbose=args.verbose,
-        max_seqs_len=args.max_seqs_len
+        max_seqs_len=args.max_seqs_len,
     )
- 
+
     try:
         _ = model.number(args.input)
         out = model.to_scheme(args.scheme)
     except TypeError as e:
         sys.exit(str(e))
- 
+
     if not args.output:
         for name, query in out.items():
             # Print to screen
@@ -111,16 +119,14 @@ def main(args=None):
                 f"Error: {query['error']}",
             )
             print({"".join(map(str, n)).strip(): res for n, res in query["numbering"]})
- 
+
     elif args.output.endswith(".csv"):
         model.to_csv(args.output)
     elif args.output.endswith(".msgpack"):
         model.to_msgpack(args.output)
     else:
         raise ValueError("Output file must end in .csv, or .json.")
- 
- 
+
+
 if __name__ == "__main__":
     main()
- 
- 
