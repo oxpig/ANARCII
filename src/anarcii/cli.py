@@ -45,7 +45,7 @@ parser.add_argument(
     type=int,
     default=102400,
     metavar="N",
-    help="Maximum number of residues to process in total (default: 102400).",
+    help="Maximum number of sequences to process before moving to batch mode and saving the numbered sequences in MessagePack file (default: 102400).",
 )
 parser.add_argument(
     "-m",
