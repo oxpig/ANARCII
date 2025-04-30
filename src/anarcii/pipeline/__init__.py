@@ -337,7 +337,8 @@ class Anarcii:
             else:
                 to_msgpack(last_object, file_path)
                 print(
-                    f"Last output saved to {file_path} in scheme: {self._alt_scheme}."
+                    f"Last output saved to {file_path} in scheme: "
+                    f"{self._alt_scheme or 'imgt'}."
                 )
 
     def to_csv(self, file_path):
