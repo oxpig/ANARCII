@@ -30,7 +30,7 @@ class Loader:
         self.model = self._load_model()
 
     def _load_params(self):
-        if self.type == "shark":
+        if self.type in ["shark", "vhh", "vnar"]:
             param_filename = f"{self.type}_4_2_128_512.json"
         elif self.mode == "speed":
             param_filename = f"{self.type}_4_1_128_512.json"
@@ -39,7 +39,7 @@ class Loader:
         else:
             raise ValueError(
                 "Invalid mode specified. Choose either 'speed' or 'accuracy' or "
-                "'shark'."
+                "'shark/vnar/vhh'."
             )
 
         param_path = pkg_resources.files("anarcii.models").joinpath(

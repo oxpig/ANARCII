@@ -47,7 +47,7 @@ class ModelRunner:
         self.device = device
         self.verbose = verbose
 
-        if self.type in ["antibody", "shark"]:
+        if self.type in ["antibody", "shark", "vhh", "vnar"]:
             self.sequence_tokeniser = NumberingTokeniser("protein_antibody")
             self.number_tokeniser = NumberingTokeniser("number_antibody")
 
