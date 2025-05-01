@@ -102,7 +102,7 @@ def main(args=None):
     )
 
     try:
-        _ = model.number(args.input)
+        model.number(args.input)
         out = model.to_scheme(args.scheme)
     except TypeError as e:
         sys.exit(str(e))
