@@ -48,7 +48,7 @@ class WindowFinder:
         self.batch_size = batch_size
         self.device = device
 
-        if self.type in ["antibody", "shark", "vhh", "vnar"]:
+        if self.type in ["antibody", "shark"]:
             self.sequence_tokeniser = NumberingTokeniser("protein_antibody")
             self.number_tokeniser = NumberingTokeniser("number_antibody")
 

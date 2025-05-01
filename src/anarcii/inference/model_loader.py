@@ -30,7 +30,7 @@ class Loader:
         self.model = self._load_model()
 
     def _load_params(self):
-        if self.type in ["shark", "vhh", "vnar"]:
+        if self.type == "shark":
             param_filename = f"{self.type}_4_2_128_512.json"
         elif self.mode == "speed":
             param_filename = f"{self.type}_4_1_128_512.json"

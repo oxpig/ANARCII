@@ -101,8 +101,12 @@ class Anarcii:
         verbose: bool = False,
         max_seqs_len=1024 * 100,
     ):
-        # need checks that all adhere before running code.
         self.seq_type = seq_type.lower()
+
+        # Coerce vnar/vhh to shark.
+        if self.seq_type in ("vhh", "vnar"):
+            self.seq_type = "shark"
+
         self.mode = mode.lower()
         self.batch_size = batch_size
         self.verbose = verbose
