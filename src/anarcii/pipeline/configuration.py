@@ -21,8 +21,15 @@ def configure_cpus(ncpu: int) -> int:
 
 
 def configure_device(cpu: bool, ncpu: int) -> torch.device:
-    """Configure computation device (CPU or GPU)."""
-    device = torch.device("cpu") if cpu else torch.device("cuda")
+    """
+    Configure computation device (CPU or GPU).
+    It will default to CPU if no GPU is available or if cpu=True.
+    """
+    if cpu or not torch.cuda.is_available():
+        device = torch.device("cpu")
+    else:
+        device = torch.device("cuda")
+
     print(f"Using device {str(device).upper()} with {ncpu} CPUs")
     return device
 
