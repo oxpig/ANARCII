@@ -33,7 +33,7 @@ parser.add_argument(
     "-c",
     "--cpu",
     action="store_true",
-    help="Run on CPU instead of GPU. This is a flag (no value needed).",
+    help="Run on CPU only, even if a GPU is available.",
 )
 parser.add_argument(
     "-n",
