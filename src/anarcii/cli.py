@@ -41,7 +41,8 @@ parser.add_argument(
     type=int,
     default=-1,
     metavar="N",
-    help="Number of CPU threads to use (default: -1, all available cores).",
+    help="Number of CPU threads to use.  If -1 (the default), ANARCII will use one "
+    "thread per available CPU core.",
 )
 parser.add_argument(
     "--max_seqs_len",
