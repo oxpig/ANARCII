@@ -77,7 +77,7 @@ parser.add_argument(
     type=str,
     default=None,
     metavar="FILE",
-    help="Specify the output file (must end in .csv or .mskpack).",
+    help="Specify the output file (must end in .csv or .msgpack).",
 )
 parser.add_argument(
     "-v", "--verbose", action="store_true", help="Enable verbose output."
