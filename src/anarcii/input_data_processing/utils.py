@@ -13,7 +13,7 @@ def split_seq(seq: str, n_jump: int, window_size: int = 90) -> list[str]:
 
 
 def pick_windows(
-    seqs: list[str], model: WindowFinder, fallback: bool = False
+    seqs: list[str], model: WindowFinder, fallback: bool = False, scfv: bool = False
 ) -> list[int] | int | None:
     # Find the index of the highest scoring window
     aa = model.sequence_tokeniser
@@ -28,4 +28,4 @@ def pick_windows(
             print(f"Sequence could not be numbered. Contains an invalid residue: {e}")
             tokenised_seqs.append([])
 
-    return model(tokenised_seqs, fallback)
+    return model(tokenised_seqs, fallback, scfv)

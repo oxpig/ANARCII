@@ -15,6 +15,14 @@ def first_index_above_threshold(preds, threshold=25):
     return None
 
 
+def all_indices_above_threshold(preds, threshold=25):
+    idxs = []
+    for i, val in enumerate(preds):
+        if val > threshold:
+            idxs.append(i)
+    return idxs
+
+
 def detect_peaks(data, threshold=25, min_distance=50):
     peaks = []
     peak_values = []
@@ -64,7 +72,7 @@ class WindowFinder:
         model_loader = Loader(self.type, self.mode, self.device)
         return model_loader.model
 
-    def __call__(self, list_of_seqs, fallback: bool = False):
+    def __call__(self, list_of_seqs, fallback: bool = False, scfv: bool = False):
         """
         Select the highest-scoring sequence.
 
@@ -73,6 +81,7 @@ class WindowFinder:
         fallback:     If `True` and no sequence scores above the threshold for
                       selection, return the highest-scoring sequence anyway.  Otherwise,
                       return `None`.
+        scfv:         If `True` returns the highest scoring indices above the threshold.
 
         """
         dl = dataloader(self.batch_size, list_of_seqs)
@@ -96,7 +105,9 @@ class WindowFinder:
                     normalized_likelihood = likelihoods[batch_no, 0].item()
                     preds.append(normalized_likelihood)
 
-            # print(preds)
+            if scfv:
+                print(preds)
+                return all_indices_above_threshold(preds)
 
             # find first index over 25
             magic_number = first_index_above_threshold(preds, 25)
