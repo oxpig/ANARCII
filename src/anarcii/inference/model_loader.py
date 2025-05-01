@@ -39,7 +39,7 @@ class Loader:
         else:
             raise ValueError(
                 "Invalid mode specified. Choose either 'speed' or 'accuracy' or "
-                "'shark/vnar/vhh'."
+                "'shark' (aliases 'vnar', 'vhh')."
             )
 
         param_path = pkg_resources.files("anarcii.models").joinpath(
