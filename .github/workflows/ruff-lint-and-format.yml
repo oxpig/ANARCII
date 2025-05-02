@@ -1,0 +1,49 @@
+name: Lint and format with Ruff
+
+permissions:
+  contents: write
+
+on: [ push, pull_request ]
+
+jobs:
+  ruff:
+    name: Apply Ruff's fixes and annotate remaining issues
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed to push back changes
+
+      - name: Install Ruff
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: --version
+
+      - name: Lint, make fixes where possible
+        run: |
+          set +e
+          ruff check --fix
+          echo "CHECK=$?" >> $GITHUB_ENV
+
+      - name: Format, make fixes where possible
+        run: |
+          set +e
+          ruff format
+          echo "FORMAT=$?" >> $GITHUB_ENV
+
+      - name: Commit and push changes if any
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "style: Lint and format with Ruff"
+            git push
+          else
+            echo "No changes to commit"
+          fi
+      
+      - name: Indicate earlier success or failure of `ruff check` and `ruff format`
+        run: "exit $(( ${CHECK:-0} !=0 ? CHECK : ${FORMAT:-0} ))"
