@@ -142,7 +142,7 @@ class Anarcii:
             else:
                 print("\nRecommended batch size for CPU: 8.\n")
 
-    def number(self, seqs: Input):
+    def number(self, seqs: Input, scfv: bool = False):
         self._last_numbered_output = None
         self._last_converted_output = None
         self._alt_scheme = None
@@ -205,10 +205,10 @@ class Anarcii:
                 # Combine the numbered sequences.
                 numbered = {}
                 for seq_type, sequences in classified.items():
-                    numbered.update(self.number_with_type(sequences, seq_type))
+                    numbered.update(self.number_with_type(sequences, seq_type, scfv))
 
             else:
-                numbered = self.number_with_type(chunk, self.seq_type)
+                numbered = self.number_with_type(chunk, self.seq_type, scfv)
 
             # Restore the original input order to the numbered sequences.
             numbered = {key: numbered[key] for key in chunk}
@@ -365,13 +365,13 @@ class Anarcii:
                     f"Last output saved to {file_path} in scheme: {self._alt_scheme}."
                 )
 
-    def number_with_type(self, seqs: dict[str, str], seq_type):
+    def number_with_type(self, seqs: dict[str, str], seq_type, scfv):
         model = ModelRunner(
             seq_type, self.mode, self.batch_size, self.device, self.verbose
         )
         window_model = WindowFinder(seq_type, self.mode, self.batch_size, self.device)
 
-        processor = SequenceProcessor(seqs, model, window_model, self.verbose)
+        processor = SequenceProcessor(seqs, model, window_model, scfv, self.verbose)
         tokenised_seqs, offsets = processor.process_sequences()
 
         # Perform numbering.

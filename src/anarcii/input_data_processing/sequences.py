@@ -33,6 +33,11 @@ cwc_pattern = re.compile(
 )
 
 
+def padded_indices(count):
+    width = len(str(count))
+    return (f"{i + 1:0{width}d}" for i in range(count))
+
+
 class SequenceProcessor:
     """
     This class takes a dict of sequences  {name: seq}. As well as pre-defined models
@@ -61,6 +66,7 @@ class SequenceProcessor:
         seqs: dict[str, str],
         model: ModelRunner,
         window_model: WindowFinder,
+        scfv: bool,
         verbose: bool,
     ):
         """
@@ -77,6 +83,7 @@ class SequenceProcessor:
         self.window_model: WindowFinder = window_model
         self.verbose: bool = verbose
         self.offsets: dict[str, int] = {}
+        self.scfv: bool = scfv
 
     def process_sequences(self):
         # Step 1: Handle long sequences
@@ -103,6 +110,38 @@ class SequenceProcessor:
             cwc_matches = list(cwc_pattern.finditer(sequence))
             seq_strings = [m.group("start") + m.group("end") for m in cwc_matches]
             cwc_strings = [m.group("cwc") for m in cwc_matches]
+
+            if self.scfv:
+                print(f"Found {len(cwc_matches)} CWC matches in {key}.")
+                # This will return multiple windows likely representing the SCFV parts
+                cwc_winners = pick_windows(cwc_strings, self.window_model, scfv=True)
+
+                count = len(cwc_winners)
+                # if multiple winners, we'll generate new keys
+                if count > 1:
+                    # remove the original key if it already exists
+                    self.offsets.pop(key, None)
+                    self.seqs.pop(key, None)
+
+                    for suffix, winner, match, seq in zip(
+                        padded_indices(count), cwc_winners, cwc_matches, seq_strings
+                    ):
+                        if winner is not None:
+                            new_key = f"{key}-{suffix}"
+                            # assign start offset and sequence for each split key
+                            self.offsets[new_key] = match.start()
+                            self.seqs[new_key] = seq
+                        else:
+                            print(f"Failed to find a CWC match in {key}-{suffix}.")
+                else:
+                    # single (or zero) winner: behave as before
+                    if count == 1 and cwc_winners[0] is not None:
+                        self.offsets[key] = cwc_matches[0].start()
+                        self.seqs[key] = seq_strings[0]
+                    else:
+                        print(f"Failed to find a CWC match in {key}.")
+
+                continue
 
             if cwc_matches:
                 # Output the integer index of a high scoring window
