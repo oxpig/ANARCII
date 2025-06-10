@@ -142,7 +142,7 @@ class Anarcii:
             else:
                 print("\nRecommended batch size for CPU: 8.\n")
 
-    def number(self, seqs: Input, out_stem: str = None):
+    def number(self, seqs: Input, pdb_out_stem: str = None):
         self._last_numbered_output = None
         self._last_converted_output = None
         self._alt_scheme = None
@@ -237,7 +237,7 @@ class Anarcii:
 
         # If our sequences came from a PDBx or PDB file, write a renumbered version.
         if structure:
-            write_pdbx_file(structure, stem=out_stem)
+            write_pdbx_file(structure, stem=pdb_out_stem)
 
         return self._last_numbered_output
 
@@ -465,7 +465,9 @@ def renumber_pdbx(
         residue.seqid = gemmi.SeqId(*number)
 
 
-def write_pdbx_file(structure: gemmi.Structure, scheme="imgt", stem: str = None) -> None:
+def write_pdbx_file(
+    structure: gemmi.Structure, scheme="imgt", stem: str = None
+) -> None:
     """
     Write a Gemmi PDBx structure to file.
 
@@ -479,7 +481,7 @@ def write_pdbx_file(structure: gemmi.Structure, scheme="imgt", stem: str = None)
 
     if stem is None:
         stem = f"{structure.name.lower()}-anarcii-{scheme}"
-    
+
     if structure.input_format is gemmi.CoorFormat.Pdb:
         structure.write_pdb(f"{stem}.pdb", pdb_write_options)
 
