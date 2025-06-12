@@ -1,7 +1,6 @@
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import torch
 
-# import matplotlib.pyplot as plt
 from anarcii.input_data_processing.tokeniser import NumberingTokeniser
 
 from .model_loader import Loader
@@ -107,7 +106,11 @@ class WindowFinder:
 
             if scfv:
                 print(preds)
-                return all_indices_above_threshold(preds)
+
+                plt.plot(preds)
+                plt.show()
+
+                return preds
 
             # find first index over 25
             magic_number = first_index_above_threshold(preds, 25)

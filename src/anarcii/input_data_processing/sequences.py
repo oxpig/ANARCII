@@ -112,34 +112,62 @@ class SequenceProcessor:
             cwc_strings = [m.group("cwc") for m in cwc_matches]
 
             if self.scfv:
-                print(f"Found {len(cwc_matches)} CWC matches in {key}.")
-                # This will return multiple windows likely representing the SCFV parts
-                cwc_winners = pick_windows(cwc_strings, self.window_model, scfv=True)
+                windows = split_seq(sequence, n_jump=5, window_size=125)
 
-                count = len(cwc_winners)
-                # if multiple winners, we'll generate new keys
-                if count > 1:
-                    # remove the original key if it already exists
-                    self.offsets.pop(key, None)
-                    self.seqs.pop(key, None)
+                preds = pick_windows(windows, model=self.window_model, scfv=True)
+                data = preds
 
-                    for suffix, winner, match, seq in zip(
-                        padded_indices(count), cwc_winners, cwc_matches, seq_strings
-                    ):
-                        if winner is not None:
-                            new_key = f"{key}-{suffix}"
-                            # assign start offset and sequence for each split key
-                            self.offsets[new_key] = match.start()
-                            self.seqs[new_key] = seq
-                        else:
-                            print(f"Failed to find a CWC match in {key}-{suffix}.")
-                else:
-                    # single (or zero) winner: behave as before
-                    if count == 1 and cwc_winners[0] is not None:
-                        self.offsets[key] = cwc_matches[0].start()
-                        self.seqs[key] = seq_strings[0]
+                minima = []
+                last_start = 0
+                probs = data
+                # 25*5 = 125 residues
+                while len(data) > 25:
+                    min_value = min(data[:25])
+
+                    # get the index
+                    new_start = data.index(min_value)
+
+                    # find the next min in the next 150 amino acids
+                    min_value = min(data[new_start : new_start + 25])
+
+                    # get the index of this minimum
+                    new_start = (
+                        data[new_start : new_start + 25].index(min_value) + new_start
+                    )
+
+                    minima.append(new_start + last_start)
+
+                    # We need to ensure similar minima are not too close together
+                    # move on 25 amino acids (5 windows of 5 shift)
+                    data = data[new_start + 5 :]
+                    last_start += new_start + 5
+
+                print("Minima: ", minima)
+
+                # remove the original key if it already exists
+                seq = self.seqs[key]
+
+                self.offsets.pop(key, None)
+                self.seqs.pop(key, None)
+
+                offset = 0
+                minima = minima + [len(probs)]
+                idx = padded_indices(len(minima))
+                for i in range(len(minima)):
+                    window = probs[offset : (offset + int((minima[i] - offset) / 2))]
+
+                    # Add 1 to the peak to move onto next window
+                    peak = probs.index(max(window)) + 2
+                    offset = minima[i]
+                    new_key = f"{key}-{next(idx)}"
+
+                    if i == 0:
+                        window = seq[0 : peak * 5 + 150]
                     else:
-                        print(f"Failed to find a CWC match in {key}.")
+                        window = seq[peak * 5 : peak * 5 + 180]
+
+                    self.offsets[new_key] = offset * 5
+                    self.seqs[new_key] = window
 
                 continue
 
