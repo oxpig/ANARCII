@@ -121,7 +121,7 @@ class SequenceProcessor:
                 last_start = 0
                 probs = data
                 # 25*5 = 125 residues
-                while len(data) > 25:
+                while len(data) > 10:
                     min_value = min(data[:25])
 
                     # get the index
@@ -142,8 +142,6 @@ class SequenceProcessor:
                     data = data[new_start + 5 :]
                     last_start += new_start + 5
 
-                print("Minima: ", minima)
-
                 # remove the original key if it already exists
                 seq = self.seqs[key]
 
@@ -152,22 +150,35 @@ class SequenceProcessor:
 
                 offset = 0
                 minima = minima + [len(probs)]
-                idx = padded_indices(len(minima))
+                idx = 1
                 for i in range(len(minima)):
                     window = probs[offset : (offset + int((minima[i] - offset) / 2))]
 
-                    # Add 1 to the peak to move onto next window
-                    peak = probs.index(max(window)) + 2
+                    # Shift the offset
                     offset = minima[i]
-                    new_key = f"{key}-{next(idx)}"
 
-                    if i == 0:
-                        window = seq[0 : peak * 5 + 150]
-                    else:
-                        window = seq[peak * 5 : peak * 5 + 180]
+                    if window and max(window) > 20:
+                        # print(max(window))
+                        # Add 1 to the peak to move onto next window
+                        peak = probs.index(max(window)) + 2
 
-                    self.offsets[new_key] = offset * 5
-                    self.seqs[new_key] = window
+                        new_key = f"{key}-{idx}"
+
+                        if i == 0:
+                            window = seq[0 : peak * 5 + 150]
+                        else:
+                            window = seq[peak * 5 : peak * 5 + 180]
+
+                        self.offsets[new_key] = offset * 5
+                        self.seqs[new_key] = window
+                        if self.verbose:
+                            print(
+                                f"Identified potential domain. Renamed to: {new_key}\n",
+                                f"{window}",
+                            )
+                        idx += 1
+                if self.verbose:
+                    print("")
 
                 continue
 

@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import torch
 
 from anarcii.input_data_processing.tokeniser import NumberingTokeniser
@@ -20,32 +19,6 @@ def all_indices_above_threshold(preds, threshold=25):
         if val > threshold:
             idxs.append(i)
     return idxs
-
-
-def detect_peaks(data, threshold=25, min_distance=50):
-    peaks = []
-    peak_values = []
-
-    for i in range(1, len(data) - 1):
-        # Check if current point is a peak above the threshold
-        if data[i] > data[i - 1] and data[i] > data[i + 1] and data[i] > threshold:
-            # Ensure a minimum distance from the last detected peak
-            if len(peaks) == 0 or (i - peaks[-1] >= min_distance):
-                peaks.append(i)
-                peak_values.append(data[i])
-
-    print(
-        "Number of high scoring chains found: ",
-        len(peaks),
-        "\n",
-        "Indices: ",
-        peaks,
-        "\n",
-        "Values: ",
-        peak_values,
-    )
-
-    return peaks
 
 
 class WindowFinder:
@@ -80,7 +53,7 @@ class WindowFinder:
         fallback:     If `True` and no sequence scores above the threshold for
                       selection, return the highest-scoring sequence anyway.  Otherwise,
                       return `None`.
-        scfv:         If `True` returns the highest scoring indices above the threshold.
+        scfv:         If `True` returns all sequence scores for processing.
 
         """
         dl = dataloader(self.batch_size, list_of_seqs)
@@ -105,11 +78,10 @@ class WindowFinder:
                     preds.append(normalized_likelihood)
 
             if scfv:
-                print(preds)
-
-                plt.plot(preds)
-                plt.show()
-
+                ## DEBUG CMDS
+                # print(preds)
+                # plt.plot(preds)
+                # plt.show()
                 return preds
 
             # find first index over 25
