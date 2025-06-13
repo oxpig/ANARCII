@@ -13,14 +13,6 @@ def first_index_above_threshold(preds, threshold=25):
     return None
 
 
-def all_indices_above_threshold(preds, threshold=25):
-    idxs = []
-    for i, val in enumerate(preds):
-        if val > threshold:
-            idxs.append(i)
-    return idxs
-
-
 class WindowFinder:
     def __init__(self, sequence_type, mode, batch_size, device):
         self.type = sequence_type.lower()
@@ -81,7 +73,6 @@ class WindowFinder:
                 #### DEBUG CMDS
                 # plt.plot(preds)
                 # plt.show()
-
                 return preds
 
             # find first index over 25

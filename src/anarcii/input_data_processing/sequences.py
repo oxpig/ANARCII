@@ -112,34 +112,50 @@ class SequenceProcessor:
             cwc_strings = [m.group("cwc") for m in cwc_matches]
 
             if self.scfv:
-                SCFV_JUMP = 5
+                SCFV_JUMP = 1
                 SCFV_WINDOW_SIZE = 125
                 SCFV_WINDOW_NUM = int(SCFV_WINDOW_SIZE / SCFV_JUMP)
-                SHIFT = 5  # number of windows to move along
+                SHIFT = int(50 / SCFV_JUMP)
+                # number of windows to move along = 50 residues
                 SCFV_THRESHOLD = 20
 
                 windows = split_seq(
                     sequence, n_jump=SCFV_JUMP, window_size=SCFV_WINDOW_SIZE
                 )
 
-                preds = pick_windows(windows, model=self.window_model, scfv=True)
-                data = preds
+                data = pick_windows(
+                    windows, model=self.window_model, scfv=True, fallback=True
+                )
 
                 minima = []
-                # start_idx = 0
+                start_idx = 0
                 last_start = 0
                 probs = data
+                # print("LEN PROBS: ", len(probs))
 
-                # 25*SCFV_JUMP = 125 residues
-                while len(data) > 15:
+                # 125 residues windows
+                while len(data) > 1:
                     min_value = min(data[:SCFV_WINDOW_NUM])
-                    start_idx = data.index(min_value)
-                    minima.append(start_idx + last_start)
+
+                    # the minima must be global... And not at the end of the sequence..
+                    # Or the start...
+                    if (
+                        (min_value < SCFV_THRESHOLD)
+                        and (
+                            (len(probs) - (data.index(min_value) + last_start))
+                            > 10 / SCFV_JUMP
+                        )
+                        and (data.index(min_value) + last_start) > 10 / SCFV_JUMP
+                    ):
+                        start_idx = data.index(min_value)
+                        minima.append(start_idx + last_start)
 
                     # We need to ensure similar minima are not too close together
                     # move on 5 windows (SHIFT)
                     data = data[start_idx + SHIFT :]
                     last_start += start_idx + SHIFT
+
+                    continue
 
                 # remove the original key if it already exists
                 seq = self.seqs[key]
@@ -154,22 +170,17 @@ class SequenceProcessor:
                 idx = 1
                 found = 0
                 for i in range(len(minima)):
-                    # For large windows, mid seq, we want maxima at start of the window.
-                    if int((minima[i] - offset) / 2) > 10:
-                        window = probs[
-                            offset : (offset + int((minima[i] - offset) / 2))
-                        ]
-                    # For short windows we need to explore to the end.
-                    else:
-                        window = probs[offset : (offset + minima[i])]
+                    # For we want maxima in first 50 residues.
+                    window = probs[offset : (offset + int(50 / SCFV_JUMP))]
+
+                    # print("Offset:", offset,
+                    #       "MAX:", max(window),
+                    #       "Max IDX", probs.index(max(window)),
+                    #       "Len:", len(window))
 
                     # Shift the offset to the new minima.
                     offset = minima[i]
                     if window and max(window) > SCFV_THRESHOLD:
-                        # print("Offset:", offset,
-                        #       "Max IDX", probs.index(max(window)),
-                        #       "Len:", len(window))
-
                         # Add 2 to the peak index to ensure we contain the Ig domain
                         # This was found by trial and error.
                         peak_idx_plus2 = probs.index(max(window)) + 2
@@ -186,7 +197,7 @@ class SequenceProcessor:
                                 )  # increment by 180 aa
                             ]
 
-                        self.offsets[new_key] = offset * SCFV_JUMP
+                        self.offsets[new_key] = peak_idx_plus2 * SCFV_JUMP
                         self.seqs[new_key] = window
                         if self.verbose:
                             print(
@@ -205,8 +216,6 @@ class SequenceProcessor:
                 elif found > 2:
                     print(f"Found more than 2 domains for {key}.\n")
 
-                # Based on found we can try CWC matches or try CWC matches then -
-                # attempt this.
                 continue
 
             if cwc_matches:
