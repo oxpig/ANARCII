@@ -78,10 +78,10 @@ class WindowFinder:
                     preds.append(normalized_likelihood)
 
             if scfv:
-                ## DEBUG CMDS
-                # print(preds)
+                #### DEBUG CMDS
                 # plt.plot(preds)
                 # plt.show()
+
                 return preds
 
             # find first index over 25

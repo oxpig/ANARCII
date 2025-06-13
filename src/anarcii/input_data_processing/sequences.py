@@ -112,35 +112,34 @@ class SequenceProcessor:
             cwc_strings = [m.group("cwc") for m in cwc_matches]
 
             if self.scfv:
-                windows = split_seq(sequence, n_jump=5, window_size=125)
+                SCFV_JUMP = 5
+                SCFV_WINDOW_SIZE = 125
+                SCFV_WINDOW_NUM = int(SCFV_WINDOW_SIZE / SCFV_JUMP)
+                SHIFT = 5  # number of windows to move along
+                SCFV_THRESHOLD = 20
+
+                windows = split_seq(
+                    sequence, n_jump=SCFV_JUMP, window_size=SCFV_WINDOW_SIZE
+                )
 
                 preds = pick_windows(windows, model=self.window_model, scfv=True)
                 data = preds
 
                 minima = []
+                # start_idx = 0
                 last_start = 0
                 probs = data
-                # 25*5 = 125 residues
-                while len(data) > 10:
-                    min_value = min(data[:25])
 
-                    # get the index
-                    new_start = data.index(min_value)
-
-                    # find the next min in the next 150 amino acids
-                    min_value = min(data[new_start : new_start + 25])
-
-                    # get the index of this minimum
-                    new_start = (
-                        data[new_start : new_start + 25].index(min_value) + new_start
-                    )
-
-                    minima.append(new_start + last_start)
+                # 25*SCFV_JUMP = 125 residues
+                while len(data) > 15:
+                    min_value = min(data[:SCFV_WINDOW_NUM])
+                    start_idx = data.index(min_value)
+                    minima.append(start_idx + last_start)
 
                     # We need to ensure similar minima are not too close together
-                    # move on 25 amino acids (5 windows of 5 shift)
-                    data = data[new_start + 5 :]
-                    last_start += new_start + 5
+                    # move on 5 windows (SHIFT)
+                    data = data[start_idx + SHIFT :]
+                    last_start += start_idx + SHIFT
 
                 # remove the original key if it already exists
                 seq = self.seqs[key]
@@ -150,26 +149,44 @@ class SequenceProcessor:
 
                 offset = 0
                 minima = minima + [len(probs)]
+                # print(minima)
+
                 idx = 1
+                found = 0
                 for i in range(len(minima)):
-                    window = probs[offset : (offset + int((minima[i] - offset) / 2))]
+                    # For large windows, mid seq, we want maxima at start of the window.
+                    if int((minima[i] - offset) / 2) > 10:
+                        window = probs[
+                            offset : (offset + int((minima[i] - offset) / 2))
+                        ]
+                    # For short windows we need to explore to the end.
+                    else:
+                        window = probs[offset : (offset + minima[i])]
 
-                    # Shift the offset
+                    # Shift the offset to the new minima.
                     offset = minima[i]
+                    if window and max(window) > SCFV_THRESHOLD:
+                        # print("Offset:", offset,
+                        #       "Max IDX", probs.index(max(window)),
+                        #       "Len:", len(window))
 
-                    if window and max(window) > 20:
-                        # print(max(window))
-                        # Add 1 to the peak to move onto next window
-                        peak = probs.index(max(window)) + 2
-
+                        # Add 2 to the peak index to ensure we contain the Ig domain
+                        # This was found by trial and error.
+                        peak_idx_plus2 = probs.index(max(window)) + 2
                         new_key = f"{key}-{idx}"
 
                         if i == 0:
-                            window = seq[0 : peak * 5 + 150]
+                            window = seq[0 : (peak_idx_plus2 * SCFV_JUMP + 180)][:180]
+                            # cap at 180.
+                            # this allows us to include sequence from 0 index.
                         else:
-                            window = seq[peak * 5 : peak * 5 + 180]
+                            window = seq[
+                                (peak_idx_plus2 * SCFV_JUMP) : (
+                                    peak_idx_plus2 * SCFV_JUMP + 180
+                                )  # increment by 180 aa
+                            ]
 
-                        self.offsets[new_key] = offset * 5
+                        self.offsets[new_key] = offset * SCFV_JUMP
                         self.seqs[new_key] = window
                         if self.verbose:
                             print(
@@ -177,9 +194,19 @@ class SequenceProcessor:
                                 f"{window}",
                             )
                         idx += 1
+                        found += 1
                 if self.verbose:
                     print("")
 
+                if found == 1:
+                    print(f"Only found 1 domain for {key}.\n")
+                elif found == 0:
+                    print(f"Failed to find any domain for {key}.\n")
+                elif found > 2:
+                    print(f"Found more than 2 domains for {key}.\n")
+
+                # Based on found we can try CWC matches or try CWC matches then -
+                # attempt this.
                 continue
 
             if cwc_matches:
