@@ -70,7 +70,7 @@ class WindowFinder:
                     preds.append(normalized_likelihood)
 
             if scfv:
-                #### DEBUG CMDS
+                #### DEBUG CMDS FOR SCFV DEV ####
                 # plt.plot(preds)
                 # plt.show()
                 return preds
