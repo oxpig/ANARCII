@@ -40,13 +40,7 @@ class WindowFinder:
         """
         Select the highest-scoring sequence.
 
-        list_of_seqs: Sequences from which to select the highest scoring above a
-                      threshold score.
-        fallback:     If `True` and no sequence scores above the threshold for
-                      selection, return the highest-scoring sequence anyway.  Otherwise,
-                      return `None`.
-        scfv:         If `True` returns all sequence scores for processing.
-
+        list_of_seqs: Sequences from whi, pdb_out_stem="blah"
         """
         dl = dataloader(self.batch_size, list_of_seqs)
         preds = []
