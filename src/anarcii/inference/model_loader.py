@@ -32,12 +32,16 @@ class Loader:
     def _load_params(self):
         if self.type == "shark":
             param_filename = f"{self.type}_4_2_128_512.json"
-        if self.type == "mhc":
+
+        elif self.type == "mhc":
             param_filename = f"{self.type}_4_2_128_512.json"
+
         elif self.mode == "speed":
             param_filename = f"{self.type}_4_1_128_512.json"
+
         elif self.mode == "accuracy":
             param_filename = f"{self.type}_4_2_128_512.json"
+
         else:
             raise ValueError(
                 "Invalid mode specified. Choose either 'speed' or 'accuracy' or "

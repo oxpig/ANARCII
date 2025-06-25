@@ -374,7 +374,9 @@ class Anarcii:
         )
         window_model = WindowFinder(seq_type, self.mode, self.batch_size, self.device)
 
-        processor = SequenceProcessor(seqs, model, window_model, scfv, self.verbose)
+        processor = SequenceProcessor(
+            seqs, self.seq_type, model, window_model, scfv, self.verbose
+        )
         tokenised_seqs, offsets = processor.process_sequences()
 
         # Perform numbering.

@@ -64,6 +64,7 @@ class SequenceProcessor:
     def __init__(
         self,
         seqs: dict[str, str],
+        seq_type: str,
         model: ModelRunner,
         window_model: WindowFinder,
         scfv: bool,
@@ -81,6 +82,7 @@ class SequenceProcessor:
             regions in one sequence.
         """
         self.seqs: dict[str, str] = seqs
+        self.seq_type: str = seq_type
         self.model: ModelRunner = model
         self.window_model: WindowFinder = window_model
         self.verbose: bool = verbose
@@ -100,7 +102,12 @@ class SequenceProcessor:
     def _handle_long_sequences(self):
         n_jump = 3
 
-        long_seqs = {key: seq for key, seq in self.seqs.items() if len(seq) > 200}
+        if self.seq_type == "mhc":
+            max_len = 400
+        else:
+            max_len = 200
+
+        long_seqs = {key: seq for key, seq in self.seqs.items() if len(seq) > max_len}
 
         if long_seqs and self.verbose:
             print(
