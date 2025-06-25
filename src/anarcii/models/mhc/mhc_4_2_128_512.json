@@ -9,6 +9,6 @@
     "HID_DIM": 128,
     "LAYERS": 2,
     
-    "TOKENIZER_SEQUENCE": "protein_antibody",
-    "TOKENIZER_NUMBER": "number_antibody"
+    "TOKENIZER_SEQUENCE": "protein_mhc",
+    "TOKENIZER_NUMBER": "number_mhc"
 }
