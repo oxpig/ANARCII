@@ -99,6 +99,7 @@ class SequenceProcessor:
 
     def _handle_long_sequences(self):
         n_jump = 3
+
         long_seqs = {key: seq for key, seq in self.seqs.items() if len(seq) > 200}
 
         if long_seqs and self.verbose:

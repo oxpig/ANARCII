@@ -107,6 +107,9 @@ class Anarcii:
         if self.seq_type in ("vhh", "vnar"):
             self.seq_type = "shark"
 
+        if self.seq_type in ("mhc", "hla", "pmhc", "phla", "b2m"):
+            self.seq_type = "mhc"
+
         self.mode = mode.lower()
         self.batch_size = batch_size
         self.verbose = verbose

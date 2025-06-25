@@ -27,6 +27,11 @@ class WindowFinder:
         elif self.type == "tcr":
             self.sequence_tokeniser = NumberingTokeniser("protein_tcr")
             self.number_tokeniser = NumberingTokeniser("number_tcr")
+
+        elif self.type == "mhc":
+            self.sequence_tokeniser = NumberingTokeniser("protein_mhc")
+            self.number_tokeniser = NumberingTokeniser("number_mhc")
+
         else:
             raise ValueError(f"Invalid model type: {self.type}")
 

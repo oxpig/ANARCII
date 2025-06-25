@@ -1,0 +1,14 @@
+{
+    "HEADS": 4,
+    "DROPOUT": 0.25,
+    "SRC_PAD_IDX": 0,
+    "TRG_PAD_IDX": 0,
+    
+    "INPUT_DIM": 25,
+    "OUTPUT_DIM": 400,
+    "HID_DIM": 128,
+    "LAYERS": 2,
+    
+    "TOKENIZER_SEQUENCE": "protein_antibody",
+    "TOKENIZER_NUMBER": "number_antibody"
+}
