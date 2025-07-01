@@ -34,7 +34,7 @@ class Loader:
             param_filename = f"{self.type}_4_2_128_512.json"
 
         elif self.type == "mhc":
-            param_filename = f"{self.type}_4_2_128_512.json"
+            param_filename = f"{self.type}.json"
 
         elif self.mode == "speed":
             param_filename = f"{self.type}_4_1_128_512.json"

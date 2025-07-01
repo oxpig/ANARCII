@@ -13,6 +13,9 @@ from .utils import build_inward_list, dataloader
 # A cutoff score to consider a sequence as well numbered by the language model.
 CUTOFF_SCORE = 15
 
+# For TCRs this needs to be higher.
+TCR_CUTOFF_SCORE = 25
+
 
 class ModelRunner:
     """
@@ -46,12 +49,14 @@ class ModelRunner:
         self.batch_size = batch_size
         self.device = device
         self.verbose = verbose
+        self.cut_off = CUTOFF_SCORE
 
         if self.type in ["antibody", "shark"]:
             self.sequence_tokeniser = NumberingTokeniser("protein_antibody")
             self.number_tokeniser = NumberingTokeniser("number_antibody")
 
         elif self.type == "tcr":
+            self.cut_off = TCR_CUTOFF_SCORE
             self.sequence_tokeniser = NumberingTokeniser("protein_tcr")
             self.number_tokeniser = NumberingTokeniser("number_tcr")
 
@@ -442,8 +447,22 @@ class ModelRunner:
                     # The last number depends on chain type - check type here.
                     if pred_tokens[batch_no, 1] in ["H", "A", "G"]:
                         last_num = 128
-                    else:
+                    elif pred_tokens[batch_no, 1] in ["L", "K", "B", "D"]:
                         last_num = 127
+                    else:
+                        # Fail or MHC stop and continue
+                        numbering.append(
+                            {
+                                "numbering": list(zip(nums, residues)),
+                                "chain_type": str(pred_tokens[batch_no, 1]),
+                                "score": normalized_score,
+                                "query_start": start_index,
+                                "query_end": end_index,
+                                "error": None,
+                                "scheme": "imgt",
+                            }
+                        )
+                        continue
 
                     try:
                         last_predicted_num = int(

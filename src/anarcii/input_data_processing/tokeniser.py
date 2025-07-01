@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 
 non_standard_aa = set("BOJUZ")
 
-mhc_nums = [str(x) for x in range(1, 251)] + [str(x) for x in range(1001, 1093)]
+mhc_nums = [str(x) for x in range(1, 92 + 1)] + [str(x) for x in range(1001, 1092 + 1)]
 
 
 class Tokeniser:
@@ -118,7 +118,6 @@ class NumberingTokeniser(Tokeniser):
                     "H2-M",
                     "H2-Q",
                     "H2-T",
-                    "HFE",
                     "HLA-A",
                     "HLA-B",
                     "HLA-C",
@@ -140,11 +139,8 @@ class NumberingTokeniser(Tokeniser):
                     "HLA-E",
                     "HLA-F",
                     "HLA-G",
-                    "MIC",
                     "MR1",
-                    "TAP1",
-                    "TAP2",
-                ],  # Unpack the MHC labels
+                ],  # Unpack the HLA labels
             ]
 
         else:
