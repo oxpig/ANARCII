@@ -6,7 +6,7 @@
     
     "INPUT_DIM": 25,
     "OUTPUT_DIM": 231,
-    "HID_DIM": 192,
+    "HID_DIM": 256,
     "LAYERS": 2,
     
     "TOKENIZER_SEQUENCE": "protein_mhc",

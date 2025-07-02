@@ -265,7 +265,7 @@ class ModelRunner:
                         normalized_score = 0.0
                         error_msg = "Less than 50 non insertion residues numbered."
 
-                    if normalized_score < CUTOFF_SCORE:
+                    if normalized_score < self.cut_off:
                         numbering.append(
                             {
                                 "numbering": None,
