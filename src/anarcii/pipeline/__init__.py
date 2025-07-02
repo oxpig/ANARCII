@@ -11,7 +11,7 @@ import gemmi
 import msgpack
 
 from anarcii.classifii import Classifii
-from anarcii.inference.model_runner import CUTOFF_SCORE, ModelRunner
+from anarcii.inference.model_runner import CUTOFF_SCORE, TCR_CUTOFF_SCORE, ModelRunner
 from anarcii.inference.window_selector import WindowFinder
 from anarcii.input_data_processing import Input, coerce_input, split_sequences
 from anarcii.input_data_processing.sequences import SequenceProcessor
@@ -225,7 +225,9 @@ class Anarcii:
             if structure:
                 for (model_index, chain_id), numbering in numbered.items():
                     if self.verbose:
-                        print(f"PDBx model index, chain ID: {model_index}, {chain_id}")
+                        print(
+                            f"\nPDBx model index, chain ID: {model_index}, {chain_id}"
+                        )
                     if numbered_sequence_qa(numbering, self.verbose):
                         renumber_pdbx(structure, model_index, chain_id, numbering)
 
@@ -407,10 +409,7 @@ def numbered_sequence_qa(numbered: dict, verbose=False) -> bool:
     Returns:
         bool:  True if the criteria are met.
     """
-    if numbered["chain_type"] in (
-        "HLK"  # Antibody
-        "ABDG"  # TCR
-    ):
+    if numbered["chain_type"] != "F":
         if verbose:
             print(
                 f"ANARCII chain type (score): {numbered['chain_type']} "
@@ -418,9 +417,17 @@ def numbered_sequence_qa(numbered: dict, verbose=False) -> bool:
                 f"Sequence length: {len(numbered['numbering'])}\n",
                 f"Sequence: {numbered['numbering']}",
             )
-        if numbered["score"] >= CUTOFF_SCORE:
+
+        if numbered["chain_type"] in ("HLK") and numbered["score"] >= CUTOFF_SCORE:
             return True
-        else:
+
+        if numbered["chain_type"] in ("ABGD") and numbered["score"] >= TCR_CUTOFF_SCORE:
+            return True
+
+        elif numbered["chain_type"] in (
+            "HLK"  # Antibody
+            "ABDG"  # TCR
+        ):
             conserved_residues = {
                 (("23", " "), "C"),
                 (("41", " "), "W"),
@@ -432,6 +439,12 @@ def numbered_sequence_qa(numbered: dict, verbose=False) -> bool:
                 return True
             else:
                 return False
+
+        # Sequence is an MHC - pass QC if higher than TCR cut off score of 25.
+        elif numbered["score"] >= CUTOFF_SCORE:
+            return True
+
+    # Sequence failed to be numbered
     else:
         return False
 
