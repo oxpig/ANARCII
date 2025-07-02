@@ -102,6 +102,7 @@ class SequenceProcessor:
     def _handle_long_sequences(self):
         n_jump = 3
 
+        print(self.seq_type)
         if self.seq_type == "mhc":
             max_len = 400
         else:

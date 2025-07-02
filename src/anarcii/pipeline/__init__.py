@@ -212,6 +212,7 @@ class Anarcii:
                 # Combine the numbered sequences.
                 numbered = {}
                 for seq_type, sequences in classified.items():
+                    # Use specified type here!
                     numbered.update(self.number_with_type(sequences, seq_type, scfv))
 
             else:
@@ -381,7 +382,7 @@ class Anarcii:
         window_model = WindowFinder(seq_type, self.mode, self.batch_size, self.device)
 
         processor = SequenceProcessor(
-            seqs, self.seq_type, model, window_model, scfv, self.verbose
+            seqs, seq_type, model, window_model, scfv, self.verbose
         )
         tokenised_seqs, offsets = processor.process_sequences()
 
