@@ -22,6 +22,7 @@ __pycache__/
 *.out
 *.pdb
 *.gz
+*.cif
 
 !*expected*.txt
 !*expected*.json

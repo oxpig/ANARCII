@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 
-seq_max_len = 210
-
 
 class EncoderLayer(nn.Module):
     def __init__(self, hid_dim, n_heads, pf_dim, dropout, device):
@@ -49,7 +47,7 @@ class Encoder(nn.Module):
         pf_dim,
         dropout,
         device,
-        max_length=seq_max_len,
+        max_length,
     ):
         super().__init__()
 
@@ -242,7 +240,7 @@ class Decoder(nn.Module):
         pf_dim,
         dropout,
         device,
-        max_length=seq_max_len,
+        max_length,
     ):
         super().__init__()
 

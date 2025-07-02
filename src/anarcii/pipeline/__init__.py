@@ -11,7 +11,7 @@ import gemmi
 import msgpack
 
 from anarcii.classifii import Classifii
-from anarcii.inference.model_runner import CUTOFF_SCORE, ModelRunner
+from anarcii.inference.model_runner import CUTOFF_SCORE, TCR_CUTOFF_SCORE, ModelRunner
 from anarcii.inference.window_selector import WindowFinder
 from anarcii.input_data_processing import Input, coerce_input, split_sequences
 from anarcii.input_data_processing.sequences import SequenceProcessor
@@ -107,6 +107,9 @@ class Anarcii:
         if self.seq_type in ("vhh", "vnar"):
             self.seq_type = "shark"
 
+        if self.seq_type in ("mhc", "hla", "pmhc", "phla", "b2m"):
+            self.seq_type = "mhc"
+
         self.mode = mode.lower()
         self.batch_size = batch_size
         self.verbose = verbose
@@ -142,7 +145,7 @@ class Anarcii:
             else:
                 print("\nRecommended batch size for CPU: 8.\n")
 
-    def number(self, seqs: Input, pdb_out_stem: str = None):
+    def number(self, seqs: Input, scfv: bool = False, pdb_out_stem: str = None):
         self._last_numbered_output = None
         self._last_converted_output = None
         self._alt_scheme = None
@@ -199,16 +202,21 @@ class Anarcii:
                 if self.verbose:
                     n_antibodies = len(classified.get("antibody", ()))
                     n_tcrs = len(classified.get("tcr", ()))
-                    print("### Ran antibody/TCR classifier. ###\n")
-                    print(f"Found {n_antibodies} antibodies and {n_tcrs} TCRs.")
+                    n_mhcs = len(classified.get("mhc", ()))
+                    print("### Ran antibody/TCR/MHC classifier. ###\n")
+                    print(
+                        f"Found {n_antibodies} antibodies,"
+                        f"{n_tcrs} TCRs and {n_mhcs} MHCs."
+                    )
 
                 # Combine the numbered sequences.
                 numbered = {}
                 for seq_type, sequences in classified.items():
-                    numbered.update(self.number_with_type(sequences, seq_type))
+                    # Use specified type here!
+                    numbered.update(self.number_with_type(sequences, seq_type, scfv))
 
             else:
-                numbered = self.number_with_type(chunk, self.seq_type)
+                numbered = self.number_with_type(chunk, self.seq_type, scfv)
 
             # Restore the original input order to the numbered sequences.
             numbered = {key: numbered[key] for key in chunk}
@@ -218,7 +226,9 @@ class Anarcii:
             if structure:
                 for (model_index, chain_id), numbering in numbered.items():
                     if self.verbose:
-                        print(f"PDBx model index, chain ID: {model_index}, {chain_id}")
+                        print(
+                            f"\nPDBx model index, chain ID: {model_index}, {chain_id}"
+                        )
                     if numbered_sequence_qa(numbering, self.verbose):
                         renumber_pdbx(structure, model_index, chain_id, numbering)
 
@@ -365,13 +375,15 @@ class Anarcii:
                     f"Last output saved to {file_path} in scheme: {self._alt_scheme}."
                 )
 
-    def number_with_type(self, seqs: dict[str, str], seq_type):
+    def number_with_type(self, seqs: dict[str, str], seq_type, scfv):
         model = ModelRunner(
             seq_type, self.mode, self.batch_size, self.device, self.verbose
         )
         window_model = WindowFinder(seq_type, self.mode, self.batch_size, self.device)
 
-        processor = SequenceProcessor(seqs, model, window_model, self.verbose)
+        processor = SequenceProcessor(
+            seqs, seq_type, model, window_model, scfv, self.verbose
+        )
         tokenised_seqs, offsets = processor.process_sequences()
 
         # Perform numbering.
@@ -398,10 +410,7 @@ def numbered_sequence_qa(numbered: dict, verbose=False) -> bool:
     Returns:
         bool:  True if the criteria are met.
     """
-    if numbered["chain_type"] in (
-        "HLK"  # Antibody
-        "ABDG"  # TCR
-    ):
+    if numbered["chain_type"] != "F":
         if verbose:
             print(
                 f"ANARCII chain type (score): {numbered['chain_type']} "
@@ -409,9 +418,17 @@ def numbered_sequence_qa(numbered: dict, verbose=False) -> bool:
                 f"Sequence length: {len(numbered['numbering'])}\n",
                 f"Sequence: {numbered['numbering']}",
             )
-        if numbered["score"] >= CUTOFF_SCORE:
+
+        if numbered["chain_type"] in ("HLK") and numbered["score"] >= CUTOFF_SCORE:
             return True
-        else:
+
+        if numbered["chain_type"] in ("ABGD") and numbered["score"] >= TCR_CUTOFF_SCORE:
+            return True
+
+        elif numbered["chain_type"] in (
+            "HLK"  # Antibody
+            "ABDG"  # TCR
+        ):
             conserved_residues = {
                 (("23", " "), "C"),
                 (("41", " "), "W"),
@@ -423,6 +440,12 @@ def numbered_sequence_qa(numbered: dict, verbose=False) -> bool:
                 return True
             else:
                 return False
+
+        # Sequence is an MHC - pass QC if higher than TCR cut off score of 25.
+        elif numbered["score"] >= CUTOFF_SCORE:
+            return True
+
+    # Sequence failed to be numbered
     else:
         return False
 

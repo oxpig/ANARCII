@@ -5,7 +5,7 @@
     "TRG_PAD_IDX": 0,
     
     "INPUT_DIM": 24,
-    "OUTPUT_DIM": 4,
+    "OUTPUT_DIM": 5,
     "HID_DIM": 128,
     "LAYERS": 1,
     

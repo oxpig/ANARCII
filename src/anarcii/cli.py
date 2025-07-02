@@ -15,9 +15,9 @@ parser.add_argument(
     "--seq_type",
     type=str,
     default="antibody",
-    choices=["antibody", "tcr", "vnar", "vhh", "shark", "unknown"],
+    choices=["antibody", "tcr", "vnar", "vhh", "shark", "unknown", "mhc"],
     help=(
-        "Sequence type to process: antibody, tcr, vnar/vhh/shark or unknown"
+        "Sequence type to process: antibody, tcr, vnar/vhh/shark, mhc or unknown"
         "(default: antibody)."
     ),
 )

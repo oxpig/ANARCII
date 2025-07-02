@@ -8,7 +8,7 @@ from anarcii.classifii import model
 from anarcii.inference.utils import dataloader
 from anarcii.input_data_processing.tokeniser import Tokeniser
 
-type_tokens = {"A": "antibody", "T": "tcr"}
+type_tokens = {"A": "antibody", "T": "tcr", "M": "mhc"}
 
 
 class TypeTokeniser(Tokeniser):
@@ -103,7 +103,7 @@ class Classifii:
         tokenized_seqs = []
         # Capped at 235 for now.
         for seq in sequences.values():
-            bookend_seq = [self.aa.start, *seq[:235], self.aa.end]
+            bookend_seq = [self.aa.start, *seq[:305], self.aa.end]
             try:
                 tokenized_seqs.append(torch.from_numpy(self.aa.encode(bookend_seq)))
             except KeyError as e:

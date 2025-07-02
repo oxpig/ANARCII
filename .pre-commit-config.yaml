@@ -3,7 +3,7 @@ repos:
     rev: v5.0.0
     hooks:
       - id: check-added-large-files
-        exclude: "^tests/data/.*"
+        exclude: "^(tests/data/.*|src/anarcii/models/.*)$"
       - id: check-yaml
       - id: check-merge-conflict
       - id: end-of-file-fixer

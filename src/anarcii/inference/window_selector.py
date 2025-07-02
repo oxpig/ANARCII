@@ -1,7 +1,5 @@
-# import matplotlib.pyplot as plt
 import torch
 
-# import matplotlib.pyplot as plt
 from anarcii.input_data_processing.tokeniser import NumberingTokeniser
 
 from .model_loader import Loader
@@ -13,32 +11,6 @@ def first_index_above_threshold(preds, threshold=25):
         if val > threshold:
             return i
     return None
-
-
-def detect_peaks(data, threshold=25, min_distance=50):
-    peaks = []
-    peak_values = []
-
-    for i in range(1, len(data) - 1):
-        # Check if current point is a peak above the threshold
-        if data[i] > data[i - 1] and data[i] > data[i + 1] and data[i] > threshold:
-            # Ensure a minimum distance from the last detected peak
-            if len(peaks) == 0 or (i - peaks[-1] >= min_distance):
-                peaks.append(i)
-                peak_values.append(data[i])
-
-    print(
-        "Number of high scoring chains found: ",
-        len(peaks),
-        "\n",
-        "Indices: ",
-        peaks,
-        "\n",
-        "Values: ",
-        peak_values,
-    )
-
-    return peaks
 
 
 class WindowFinder:
@@ -55,6 +27,11 @@ class WindowFinder:
         elif self.type == "tcr":
             self.sequence_tokeniser = NumberingTokeniser("protein_tcr")
             self.number_tokeniser = NumberingTokeniser("number_tcr")
+
+        elif self.type == "mhc":
+            self.sequence_tokeniser = NumberingTokeniser("protein_mhc")
+            self.number_tokeniser = NumberingTokeniser("number_mhc")
+
         else:
             raise ValueError(f"Invalid model type: {self.type}")
 
@@ -64,16 +41,11 @@ class WindowFinder:
         model_loader = Loader(self.type, self.mode, self.device)
         return model_loader.model
 
-    def __call__(self, list_of_seqs, fallback: bool = False):
+    def __call__(self, list_of_seqs, fallback: bool = False, scfv: bool = False):
         """
         Select the highest-scoring sequence.
 
-        list_of_seqs: Sequences from which to select the highest scoring above a
-                      threshold score.
-        fallback:     If `True` and no sequence scores above the threshold for
-                      selection, return the highest-scoring sequence anyway.  Otherwise,
-                      return `None`.
-
+        list_of_seqs: Sequences from whi, pdb_out_stem="blah"
         """
         dl = dataloader(self.batch_size, list_of_seqs)
         preds = []
@@ -96,7 +68,11 @@ class WindowFinder:
                     normalized_likelihood = likelihoods[batch_no, 0].item()
                     preds.append(normalized_likelihood)
 
-            # print(preds)
+            if scfv:
+                #### DEBUG CMDS FOR SCFV DEV ####
+                # plt.plot(preds)
+                # plt.show()
+                return preds
 
             # find first index over 25
             magic_number = first_index_above_threshold(preds, 25)

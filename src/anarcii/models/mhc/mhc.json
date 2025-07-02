@@ -1,0 +1,14 @@
+{
+    "HEADS": 4,
+    "DROPOUT": 0.25,
+    "SRC_PAD_IDX": 0,
+    "TRG_PAD_IDX": 0,
+    
+    "INPUT_DIM": 25,
+    "OUTPUT_DIM": 231,
+    "HID_DIM": 256,
+    "LAYERS": 2,
+    
+    "TOKENIZER_SEQUENCE": "protein_mhc",
+    "TOKENIZER_NUMBER": "number_mhc"
+}

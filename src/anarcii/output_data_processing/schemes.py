@@ -12,7 +12,8 @@ def convert_number_scheme(numbered_seqs_dict, scheme):
 
     converted_seqs = {}
     for nm, dt in numbered_seqs_dict.items():
-        if dt["numbering"] and dt["chain_type"] != "F":
+        # Only applies to TCRs and Antibodies
+        if dt["numbering"] and dt["chain_type"] in ["H", "L", "K", "A", "B", "G", "D"]:
             chain_call = dt["chain_type"]
             chain = "heavy" if chain_call == "H" else "light"
 
@@ -22,9 +23,13 @@ def convert_number_scheme(numbered_seqs_dict, scheme):
                 scheme_name = scheme.lower() + "_" + chain
                 converted_seqs[nm] = conversion_function(dt, scheme_name)
 
-        else:
+        elif dt["chain_type"] == "F":
             # Sequence is a fail - could not be numbered
             dt["scheme"] = scheme
+            converted_seqs[nm] = dt
+        else:
+            # Sequences are HLA - do not renumber - keep IMGT
+            dt["scheme"] = "imgt"
             converted_seqs[nm] = dt
 
     return converted_seqs

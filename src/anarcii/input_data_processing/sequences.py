@@ -33,6 +33,11 @@ cwc_pattern = re.compile(
 )
 
 
+def padded_indices(count):
+    width = len(str(count))
+    return (f"{i + 1:0{width}d}" for i in range(count))
+
+
 class SequenceProcessor:
     """
     This class takes a dict of sequences  {name: seq}. As well as pre-defined models
@@ -59,8 +64,10 @@ class SequenceProcessor:
     def __init__(
         self,
         seqs: dict[str, str],
+        seq_type: str,
         model: ModelRunner,
         window_model: WindowFinder,
+        scfv: bool,
         verbose: bool,
     ):
         """
@@ -71,12 +78,16 @@ class SequenceProcessor:
             a one step decoder to get get a single logit value representing
             score for the input window (sequence fragment).
             verbose (bool): Whether to print detailed logs.
+            scfv (bool): whether to run in SCFV mode which looks for multiple IG/TCR
+            regions in one sequence.
         """
         self.seqs: dict[str, str] = seqs
+        self.seq_type: str = seq_type
         self.model: ModelRunner = model
         self.window_model: WindowFinder = window_model
         self.verbose: bool = verbose
         self.offsets: dict[str, int] = {}
+        self.scfv: bool = scfv
 
     def process_sequences(self):
         # Step 1: Handle long sequences
@@ -90,7 +101,14 @@ class SequenceProcessor:
 
     def _handle_long_sequences(self):
         n_jump = 3
-        long_seqs = {key: seq for key, seq in self.seqs.items() if len(seq) > 200}
+
+        print(self.seq_type)
+        if self.seq_type == "mhc":
+            max_len = 400
+        else:
+            max_len = 200
+
+        long_seqs = {key: seq for key, seq in self.seqs.items() if len(seq) > max_len}
 
         if long_seqs and self.verbose:
             print(
@@ -103,6 +121,123 @@ class SequenceProcessor:
             cwc_matches = list(cwc_pattern.finditer(sequence))
             seq_strings = [m.group("start") + m.group("end") for m in cwc_matches]
             cwc_strings = [m.group("cwc") for m in cwc_matches]
+
+            if self.scfv:
+                # Set up SCFV specific variables here. These can be played with.
+                # The parameters below work best for most SCFV seqs tested.
+
+                SCFV_JUMP = 1  # How many residues we increment along a sequence.
+                SCFV_WINDOW_SIZE = 125  # Number of residues being scored.
+                SCFV_WINDOW_NUM = int(SCFV_WINDOW_SIZE / SCFV_JUMP)
+
+                SHIFT = int(50 / SCFV_JUMP)  # no of windows to move along: 50 residues
+                SCFV_THRESHOLD = 20  # Score cut off for a given window
+
+                windows = split_seq(
+                    sequence, n_jump=SCFV_JUMP, window_size=SCFV_WINDOW_SIZE
+                )
+
+                data = pick_windows(
+                    windows, model=self.window_model, scfv=True, fallback=True
+                )
+
+                ### Start by indentifying the minima - the sequence positions between
+                # two regions which the model suggests contains IG/TCR content.
+                minima = []
+                start_idx = 0
+                last_start = 0
+
+                # Create a copy of data for later - we will reduce the size of data as
+                # we iteratively search for the minima in the next 125 residues.
+                probs = data
+
+                # iterate through data and find minima that adhear to our conditions.
+                while len(data) > 1:
+                    min_value = min(data[:SCFV_WINDOW_NUM])
+                    # The minima must be global...
+                    # And not at the end of the sequence..
+                    # Or the start...
+                    if (
+                        (min_value < SCFV_THRESHOLD)
+                        and (
+                            (len(probs) - (data.index(min_value) + last_start))
+                            > 10 / SCFV_JUMP
+                        )
+                        and (data.index(min_value) + last_start) > 10 / SCFV_JUMP
+                    ):
+                        start_idx = data.index(min_value)
+                        minima.append(start_idx + last_start)
+
+                    # We need to ensure similar minima are not too close together
+                    # move on 5 windows (SHIFT)
+                    data = data[start_idx + SHIFT :]
+                    last_start += start_idx + SHIFT
+
+                    continue
+
+                # Found windows >>> modify the seqs dict (still works for non SCFVs)
+                # Remove the original key if it already exists
+                seq = self.seqs[key]
+
+                self.offsets.pop(key, None)
+                self.seqs.pop(key, None)
+
+                ### NOW LOOK FOR PEAKS (> threshold & within 50 residues of minima).
+                offset = 0
+                minima = minima + [len(probs)]
+
+                idx = 1
+                found = 0
+                for i in range(len(minima)):
+                    # For we want maxima in first 50 residues.
+                    window = probs[offset : (offset + int(50 / SCFV_JUMP))]
+
+                    # print("Offset:", offset,
+                    #       "MAX:", max(window),
+                    #       "Max IDX", probs.index(max(window)),
+                    #       "Len:", len(window))
+
+                    # Shift the offset to the new minima.
+                    offset = minima[i]
+                    if window and max(window) > SCFV_THRESHOLD:
+                        # Add 2 to the peak index to ensure we contain the Ig domain
+                        # This was simply found by trial and error (SORRY, no magic).
+                        peak_idx_plus2 = probs.index(max(window)) + 2
+                        new_key = f"{key}-{idx}"
+
+                        # We will cap all sequences at 180.
+                        if i == 0:
+                            # First: must include sequence from 0 index.
+                            window = seq[0 : (peak_idx_plus2 * SCFV_JUMP + 180)][:180]
+                        else:
+                            window = seq[
+                                (peak_idx_plus2 * SCFV_JUMP) : (
+                                    peak_idx_plus2 * SCFV_JUMP + 180
+                                )  # increment by 180 aa
+                            ]
+
+                        self.offsets[new_key] = peak_idx_plus2 * SCFV_JUMP
+                        self.seqs[new_key] = window
+                        if self.verbose:
+                            print(
+                                f"Identified potential domain. Renamed to: {new_key}\n",
+                                f"{window}",
+                            )
+                        idx += 1
+                        found += 1
+                if self.verbose:
+                    print("")
+
+                if found == 1:
+                    print(f"Only found 1 domain for {key}.\n")
+                elif found == 0:
+                    print(f"Failed to find any domain for {key}.\n")
+                elif found > 2:
+                    print(f"Found more than 2 domains for {key}.\n")
+
+                # Return the domains found to the user and do not enter the CWC loop.
+                # CWC method was not robust to SCFVs during testing.
+                continue
 
             if cwc_matches:
                 # Output the integer index of a high scoring window

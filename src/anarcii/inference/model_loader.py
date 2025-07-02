@@ -32,10 +32,16 @@ class Loader:
     def _load_params(self):
         if self.type == "shark":
             param_filename = f"{self.type}_4_2_128_512.json"
+
+        elif self.type == "mhc":
+            param_filename = f"{self.type}.json"
+
         elif self.mode == "speed":
             param_filename = f"{self.type}_4_1_128_512.json"
+
         elif self.mode == "accuracy":
             param_filename = f"{self.type}_4_2_128_512.json"
+
         else:
             raise ValueError(
                 "Invalid mode specified. Choose either 'speed' or 'accuracy' or "
@@ -67,6 +73,11 @@ class Loader:
         return str(model_path)
 
     def _load_model(self):
+        if self.type == "mhc":
+            seq_max_len = 400
+        else:
+            seq_max_len = 210
+
         ENC = model.Encoder(
             self.INPUT_DIM,
             self.HID_DIM,
@@ -75,6 +86,7 @@ class Loader:
             self.ENC_PF_DIM,
             self.ENC_DROPOUT,
             self.device,
+            seq_max_len,
         )
 
         DEC = model.Decoder(
@@ -85,6 +97,7 @@ class Loader:
             self.DEC_PF_DIM,
             self.DEC_DROPOUT,
             self.device,
+            seq_max_len,
         )
 
         S2S = model.S2S(ENC, DEC, self.SRC_PAD_IDX, self.TRG_PAD_IDX, self.device)
