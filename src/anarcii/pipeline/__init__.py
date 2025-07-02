@@ -202,8 +202,12 @@ class Anarcii:
                 if self.verbose:
                     n_antibodies = len(classified.get("antibody", ()))
                     n_tcrs = len(classified.get("tcr", ()))
-                    print("### Ran antibody/TCR classifier. ###\n")
-                    print(f"Found {n_antibodies} antibodies and {n_tcrs} TCRs.")
+                    n_mhcs = len(classified.get("mhc", ()))
+                    print("### Ran antibody/TCR/MHC classifier. ###\n")
+                    print(
+                        f"Found {n_antibodies} antibodies,"
+                        f"{n_tcrs} TCRs and {n_mhcs} MHCs."
+                    )
 
                 # Combine the numbered sequences.
                 numbered = {}

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-seq_max_len = 240
+seq_max_len = 310
 
 
 class EncoderLayer(nn.Module):
