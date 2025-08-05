@@ -4,6 +4,14 @@ ANARCII is a generalised language model for antigen receptor numbering.
 
 For the user guide please read the [wiki page](https://github.com/oxpig/ANARCII/wiki).
 
+## Installation
+
+For a full breakdown of all installation options please see: [installation](https://github.com/oxpig/ANARCII/wiki/Installation)
+
+```python
+pip install anarcii
+```
+
 ## Web tool
 
 We have a live [web tool](https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabpred/anarcii/):
