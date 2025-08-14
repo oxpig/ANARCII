@@ -13,6 +13,11 @@ from .utils import build_inward_list, dataloader
 # A cutoff score to consider a sequence as well numbered by the language model.
 CUTOFF_SCORE = 15
 
+# For TCRs and VNARs this needs to be higher.
+TCR_CUTOFF_SCORE = 25
+
+VNAR_CUTOFF_SCORE = 24
+
 
 class ModelRunner:
     """
@@ -46,14 +51,22 @@ class ModelRunner:
         self.batch_size = batch_size
         self.device = device
         self.verbose = verbose
+        self.cut_off = CUTOFF_SCORE
 
-        if self.type in ["antibody", "shark"]:
+        if self.type == "antibody":
+            self.sequence_tokeniser = NumberingTokeniser("protein_antibody")
+            self.number_tokeniser = NumberingTokeniser("number_antibody")
+
+        elif self.type == "shark":
+            self.cut_off = VNAR_CUTOFF_SCORE
             self.sequence_tokeniser = NumberingTokeniser("protein_antibody")
             self.number_tokeniser = NumberingTokeniser("number_antibody")
 
         elif self.type == "tcr":
+            self.cut_off = TCR_CUTOFF_SCORE
             self.sequence_tokeniser = NumberingTokeniser("protein_tcr")
             self.number_tokeniser = NumberingTokeniser("number_tcr")
+
         else:
             raise ValueError(f"Invalid model type: {self.type}")
 
