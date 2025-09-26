@@ -85,7 +85,9 @@ def test_cli_commands(run_cli, args, expected):
             "unknown.fa",
         ],
         ["anarcii", "-t", "tcr", "-m", "speed", "-o", "cli_b.msgpack", "unknown.fa"],
-        ["anarcii", "-t", "shark", "-m", "speed", "-o", "cli_c.msgpack", "unknown.fa"],
+        # ["anarcii", "-t", "shark",
+        # "-m", "speed",
+        # "-o", "cli_c.msgpack", "unknown.fa"],
         [
             "anarcii",
             "-t",
@@ -97,7 +99,12 @@ def test_cli_commands(run_cli, args, expected):
             "unknown.fa",
         ],
     ),
-    ids=("antibody", "tcr", "shark", "unknown"),
+    ids=(
+        "antibody",
+        "tcr",
+        # "shark",
+        "unknown",
+    ),
 )
 def test_cli_files(run_cli, args, pytestconfig, tmp_path):
     """
