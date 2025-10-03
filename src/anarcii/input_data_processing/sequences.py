@@ -225,7 +225,7 @@ class SequenceProcessor:
                 elif found == 0:
                     print(f"Failed to find any domain for {key}.\n")
                     # The sequence will not be broken up - just remove
-                    # This ensure it is not processed further.
+                    # This ensures it is not processed further.
                     self.offsets[key] = 0
                     self.seqs[key] = ""
 
