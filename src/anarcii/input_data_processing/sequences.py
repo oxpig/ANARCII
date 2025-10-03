@@ -164,12 +164,8 @@ class SequenceProcessor:
                     data = data[start_idx + SHIFT :]
                     last_start += start_idx + SHIFT
 
-                # Found windows >>> modify the seqs dict (still works for non SCFVs)
-                # Remove the original key if it already exists
+                # Get the original sequence.
                 seq = self.seqs[key]
-
-                self.offsets.pop(key, None)
-                self.seqs.pop(key, None)
 
                 ### NOW LOOK FOR PEAKS (> threshold & within 50 residues of minima).
                 offset = 0
@@ -205,8 +201,15 @@ class SequenceProcessor:
                                 )  # increment by 180 aa
                             ]
 
+                        # Found window > modify seqs dict (works for non SCFVs)
+                        # Remove the original key if it already exists
+                        # None ensures no error.
+                        self.offsets.pop(key, None)
+                        self.seqs.pop(key, None)
+
                         self.offsets[new_key] = peak_idx_plus2 * SCFV_JUMP
                         self.seqs[new_key] = window
+
                         if self.verbose:
                             print(
                                 f"Identified potential domain. Renamed to: {new_key}\n",
@@ -221,6 +224,11 @@ class SequenceProcessor:
                     print(f"Only found 1 domain for {key}.\n")
                 elif found == 0:
                     print(f"Failed to find any domain for {key}.\n")
+                    # The sequence will not be broken up - just remove
+                    # This ensure it is not processed further.
+                    self.offsets[key] = 0
+                    self.seqs[key] = ""
+
                 elif found > 2:
                     print(f"Found more than 2 domains for {key}.\n")
 
