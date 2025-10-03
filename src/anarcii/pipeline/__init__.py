@@ -213,7 +213,7 @@ class Anarcii:
 
             # Restore the original input order to the numbered sequences.
             # If SCFV has been run then the keys will have been modified to
-            # include the linker, so we cannot do this.
+            # include the suffix, so we cannot do this.
             if not scfv:
                 numbered = {key: numbered[key] for key in original_keys}
             else:
