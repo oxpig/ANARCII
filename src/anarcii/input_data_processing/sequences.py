@@ -164,8 +164,6 @@ class SequenceProcessor:
                     data = data[start_idx + SHIFT :]
                     last_start += start_idx + SHIFT
 
-                    continue
-
                 # Found windows >>> modify the seqs dict (still works for non SCFVs)
                 # Remove the original key if it already exists
                 seq = self.seqs[key]
