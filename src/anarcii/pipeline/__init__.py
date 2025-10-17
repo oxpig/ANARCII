@@ -217,18 +217,16 @@ class Anarcii:
             if not scfv:
                 numbered = {key: numbered[key] for key in original_keys}
             else:
-                new_keys = list(numbered)
+                old_key_to_new_keys = {key: [] for key in original_keys}
+                for new_key in numbered:
+                    old_key, _ = new_key.rsplit("-", maxsplit=1)
+                    old_key_to_new_keys[old_key].append(new_key)
 
-                tmp_dt = {}
-                for x in original_keys:
-                    for y in new_keys:
-                        if y.startswith(x):
-                            tmp_dt[x] = tmp_dt.get(x, []) + [y]
-                tmp_dt = {k: sorted(v) for k, v in tmp_dt.items()}
-
-                # Pull out all the values
-                ordered_new_keys = [sv for _, v in tmp_dt.items() for sv in v]
-                # Now reorder numbered dict
+                # For each old key, sort the new keys (this should be redundant).
+                ordered_new_keys = chain.from_iterable(
+                    map(sorted, old_key_to_new_keys.values())
+                )
+                # Now reorder the numbered dict.
                 numbered = {key: numbered[key] for key in ordered_new_keys}
 
             # If the sequences came from a PDB(x) file, renumber them in the associated
