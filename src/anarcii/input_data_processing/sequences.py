@@ -223,6 +223,13 @@ class SequenceProcessor:
                             )
                         idx += 1
                         found += 1
+
+                        # Fix for exact repetition of duplicate sequences.
+                        # Set all analysed probs to zero to avoid re-detection.
+                        for j in range(0, peak_idx_plus2 + 1):
+                            if j < len(probs):
+                                probs[j] = 0
+
                 if self.verbose:
                     print("")
 
