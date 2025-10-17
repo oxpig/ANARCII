@@ -9,6 +9,8 @@ from anarcii.input_data_processing.tokeniser import Tokeniser
 
 from .utils import pick_windows, split_seq
 
+SHORT_SEQ_MAX_LENGTH = 200  # residues.
+
 # A regex pattern to match no more than 200 residues, containing a 'CWC' pattern
 # (cysteine followed by 5–25 residues followed by a tryptophan followed by 50–80
 # residues followed by another cysteine) starting no later than the 41st residue. The
@@ -99,7 +101,11 @@ class SequenceProcessor:
 
     def _handle_long_sequences(self):
         n_jump = 3
-        long_seqs = {key: seq for key, seq in self.seqs.items() if len(seq) > 200}
+        long_seqs = {
+            key: seq
+            for key, seq in self.seqs.items()
+            if len(seq) > SHORT_SEQ_MAX_LENGTH
+        }
 
         if long_seqs and self.verbose:
             print(
