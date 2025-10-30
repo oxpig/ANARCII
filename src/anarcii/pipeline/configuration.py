@@ -29,8 +29,7 @@ def configure_device(cpu: bool, ncpu: int) -> torch.device:
         device = torch.device("cpu")
     else:
         device = torch.device("cuda")
-
-    print(f"Using device {str(device).upper()} with {ncpu} CPUs")
+    
     return device
 
 
