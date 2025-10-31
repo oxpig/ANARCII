@@ -219,7 +219,11 @@ class Anarcii:
             else:
                 old_key_to_new_keys = {key: [] for key in original_keys}
                 for new_key in numbered:
-                    base_key = new_key.rsplit("-", 1)[0] if "-" in new_key else new_key
+                    if new_key.rsplit("-", 1)[-1].isdigit():
+                        base_key = new_key.rsplit("-", 1)[0]
+                    else:
+                        base_key = new_key
+
                     if base_key in old_key_to_new_keys:
                         old_key_to_new_keys[base_key].append(new_key)
                     else:
