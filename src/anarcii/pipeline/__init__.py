@@ -219,8 +219,12 @@ class Anarcii:
             else:
                 old_key_to_new_keys = {key: [] for key in original_keys}
                 for new_key in numbered:
-                    old_key, _ = new_key.rsplit("-", maxsplit=1)
-                    old_key_to_new_keys[old_key].append(new_key)
+                    base_key = new_key.rsplit("-", 1)[0] if "-" in new_key else new_key
+                    if base_key in old_key_to_new_keys:
+                        old_key_to_new_keys[base_key].append(new_key)
+                    else:
+                        # fallback: preserve as-is
+                        old_key_to_new_keys.setdefault(base_key, []).append(new_key)
 
                 # For each old key, sort the new keys (this should be redundant).
                 ordered_new_keys = chain.from_iterable(
