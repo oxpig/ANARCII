@@ -120,7 +120,7 @@ class Anarcii:
 
         # Get device and ncpu config
         self.ncpu = configure_cpus(ncpu)
-        self.device = configure_device(self.cpu, self.ncpu)
+        self.device = configure_device(self.cpu, self.ncpu, self.verbose)
         self.print_initial_configuration()
 
     def print_initial_configuration(self):
