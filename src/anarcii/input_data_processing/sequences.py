@@ -128,7 +128,8 @@ class SequenceProcessor:
                 SCFV_WINDOW_NUM = int(SCFV_WINDOW_SIZE / SCFV_JUMP)
 
                 SHIFT = int(50 / SCFV_JUMP)  # no of windows to move along: 50 residues
-                SCFV_THRESHOLD = 20  # Score cut off for a given window
+                # SCFV_THRESHOLD = 20  # Score cut off for a given window
+                SCFV_THRESHOLD = 25  # Magic number hack id by @eliottpark 
 
                 windows = split_seq(
                     sequence, n_jump=SCFV_JUMP, window_size=SCFV_WINDOW_SIZE
@@ -151,6 +152,7 @@ class SequenceProcessor:
                 # iterate through data and find minima that adhear to our conditions.
                 while len(data) > 1:
                     min_value = min(data[:SCFV_WINDOW_NUM])
+                    # print(min_value)
                     # The minima must be global...
                     # And not at the end of the sequence..
                     # Or the start...
