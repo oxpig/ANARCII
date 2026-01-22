@@ -141,34 +141,42 @@ class SequenceProcessor:
                 ### Start by indentifying the minima - the sequence positions between
                 # two regions which the model suggests contains IG/TCR content.
                 minima = []
-                start_idx = 0
                 last_start = 0
 
                 # Create a copy of data for later - we will reduce the size of data as
                 # we iteratively search for the minima in the next 125 residues.
                 probs = data
 
-                # iterate through data and find minima that adhear to our conditions.
+                # Identify low-scoring minima to act as boundaries between IG/TCR-like
+                # regions in multi-domain constructs.
+                #
+                # NOTE: use indices relative to the current truncated segment
+                # (`local_segment.index(...)`) rather than `.index()` on the full
+                # probability list. For repetitive sequences (e.g. identical VH repeats),
+                # global `.index()` can snap to the first occurrence and make splitting
+                # unstable.
                 while len(data) > 1:
-                    min_value = min(data[:SCFV_WINDOW_NUM])
+                    local_segment = data[:SCFV_WINDOW_NUM]
+                    min_value = min(local_segment)
                     # The minima must be global...
                     # And not at the end of the sequence..
                     # Or the start...
+                    local_min_idx = local_segment.index(min_value)
+                    global_min_idx = local_min_idx + last_start
                     if (
                         (min_value < SCFV_THRESHOLD)
                         and (
-                            (len(probs) - (data.index(min_value) + last_start))
+                            (len(probs) - global_min_idx)
                             > 10 / SCFV_JUMP
                         )
-                        and (data.index(min_value) + last_start) > 10 / SCFV_JUMP
+                        and global_min_idx > 10 / SCFV_JUMP
                     ):
-                        start_idx = data.index(min_value)
-                        minima.append(start_idx + last_start)
+                        minima.append(global_min_idx)
 
                     # We need to ensure similar minima are not too close together
                     # move on 5 windows (SHIFT)
-                    data = data[start_idx + SHIFT :]
-                    last_start += start_idx + SHIFT
+                    data = data[local_min_idx + SHIFT :]
+                    last_start += local_min_idx + SHIFT
 
                 # Get the original sequence.
                 seq = self.seqs[key]
@@ -180,20 +188,21 @@ class SequenceProcessor:
                 idx = 1
                 found = 0
                 for i in range(len(minima)):
-                    # For we want maxima in first 50 residues.
-                    window = probs[offset : (offset + int(50 / SCFV_JUMP))]
+                    segment_start = offset
+                    boundary = minima[i]
+                    # Search the full segment between minima, not just the first ~50
+                    # residues after a boundary.
+                    window = probs[segment_start:boundary]
 
-                    # print("Offset:", offset,
-                    #       "MAX:", max(window),
-                    #       "Max IDX", probs.index(max(window)),
-                    #       "Len:", len(window))
-
-                    # Shift the offset to the new minima.
-                    offset = minima[i]
-                    if window and max(window) > SCFV_THRESHOLD:
+                    if window:
+                        local_max = max(window)
+                        if local_max <= SCFV_THRESHOLD:
+                            offset = boundary
+                            continue
                         # Add 2 to the peak index to ensure we contain the Ig domain
                         # This was simply found by trial and error (SORRY, no magic).
-                        peak_idx_plus2 = probs.index(max(window)) + 2
+                        local_max_idx = window.index(local_max)
+                        peak_idx_plus2 = (segment_start + local_max_idx) + 2
                         new_key = f"{key}-{idx}"
 
                         # We will cap all sequences at 180.
@@ -234,6 +243,9 @@ class SequenceProcessor:
                         for j in range(0, peak_idx_plus2 + 1):
                             if j < len(probs):
                                 probs[j] = 0
+
+                    # Shift the offset to the next segment boundary.
+                    offset = boundary
 
                 if self.verbose:
                     print("")
