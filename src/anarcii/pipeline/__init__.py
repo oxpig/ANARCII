@@ -100,6 +100,7 @@ class Anarcii:
         ncpu: int = -1,
         verbose: bool = False,
         max_seqs_len=1024 * 100,
+        low_score_warn=False,
     ):
         self.seq_type = seq_type.lower()
 
@@ -112,6 +113,7 @@ class Anarcii:
         self.verbose = verbose
         self.cpu = cpu
         self.max_seqs_len = max_seqs_len
+        self.low_score_warn = low_score_warn
 
         self._last_numbered_output: dict | Path | None = None
         # Has a conversion to a new number scheme occured?
@@ -262,6 +264,12 @@ class Anarcii:
         # If our sequences came from a PDBx or PDB file, write a renumbered version.
         if structure:
             write_pdbx_file(structure, stem=pdb_out_stem)
+
+        # We can warn the user when a sequence falls below ~3SD from medians identified.
+        # A message is printed to the output.     
+        if self.low_score_warn and not serialise:
+            print_low_score(self._last_numbered_output)
+
 
         return self._last_numbered_output
 
@@ -518,3 +526,13 @@ def write_pdbx_file(
         elif structure.input_format is gemmi.CoorFormat.Mmjson:
             with open(f"{stem}.json", "w") as f:
                 f.write(document.as_json(mmjson=True))
+
+
+def print_low_score(last_numbered_output, mode, type):
+    
+    warning_threshold = warning_thresholds[mode+type]
+    fail_threshold = fail_thresholds[mode+type]
+
+    for x in last_numbered_output:
+        if x["Score"] <= warning_threshold & x["Score"] > fail_threshold:
+            print(f"{x["Name"]} falls in the grey zone and might not match the sequence type, please inspect further.")
