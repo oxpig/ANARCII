@@ -265,8 +265,7 @@ class Anarcii:
         if structure:
             write_pdbx_file(structure, stem=pdb_out_stem)
 
-        # We can warn the user when a sequence falls below ~3SD from medians identified.
-        # A message is printed to the output.
+        # Warn the user when a sequence falls below ~3SD from medians identified.
         # This will not work in serialise mode.
         if self.low_score_warn and not serialise:
             print_low_score(self._last_numbered_output)
