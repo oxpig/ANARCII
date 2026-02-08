@@ -266,10 +266,10 @@ class Anarcii:
             write_pdbx_file(structure, stem=pdb_out_stem)
 
         # We can warn the user when a sequence falls below ~3SD from medians identified.
-        # A message is printed to the output.     
+        # A message is printed to the output.
+        # This will not work in serialise mode.
         if self.low_score_warn and not serialise:
             print_low_score(self._last_numbered_output)
-
 
         return self._last_numbered_output
 
@@ -529,10 +529,15 @@ def write_pdbx_file(
 
 
 def print_low_score(last_numbered_output, mode, type):
-    
-    warning_threshold = warning_thresholds[mode+type]
-    fail_threshold = fail_thresholds[mode+type]
+    warning_thresholds = {}
+    fail_thresholds = {}
+
+    warning_threshold = warning_thresholds[mode + type]
+    fail_threshold = fail_thresholds[mode + type]
 
     for x in last_numbered_output:
-        if x["Score"] <= warning_threshold & x["Score"] > fail_threshold:
-            print(f"{x["Name"]} falls in the grey zone and might not match the sequence type, please inspect further.")
+        if fail_threshold < x["Score"] <= warning_threshold:
+            print(
+                f"{x['Name']} falls in the grey zone and might not match the sequence "
+                "type, please inspect further."
+            )
