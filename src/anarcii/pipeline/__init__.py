@@ -268,7 +268,7 @@ class Anarcii:
         # Warn the user when a sequence falls below ~3SD from medians identified.
         # This will not work in serialise mode.
         if self.low_score_warn and not serialise:
-            print_low_score(self._last_numbered_output)
+            print_low_score(self._last_numbered_output, self.seq_type, self.mode)
 
         return self._last_numbered_output
 
@@ -527,16 +527,30 @@ def write_pdbx_file(
                 f.write(document.as_json(mmjson=True))
 
 
-def print_low_score(last_numbered_output, mode, type):
-    warning_thresholds = {}
-    fail_thresholds = {}
+def print_low_score(last_numbered_output, type, mode):
+    warning_thresholds = {
+        "antibody_accuracy": 25,
+        "antibody_speed": 22.5,
+        "tcr_accuracy": 32.5,
+        "tcr_speed": 32.5,
+        "shark_accuracy": 24.5,
+        "shark_speed": 24.5,
+    }
+    fail_thresholds = {
+        "antibody_accuracy": 15,
+        "antibody_speed": 15,
+        "tcr_accuracy": 25,
+        "tcr_speed": 25,
+        "shark_accuracy": 24,
+        "shark_speed": 24,
+    }
 
-    warning_threshold = warning_thresholds[mode + type]
-    fail_threshold = fail_thresholds[mode + type]
+    warning_threshold = warning_thresholds[type + "_" + mode]
+    fail_threshold = fail_thresholds[type + "_" + mode]
 
-    for x in last_numbered_output:
-        if fail_threshold < x["Score"] <= warning_threshold:
+    for k, v in last_numbered_output.items():
+        if fail_threshold < v["score"] <= warning_threshold:
             print(
-                f"{x['Name']} falls in the grey zone and might not match the sequence "
-                "type, please inspect further."
+                f"{k} has lower than expected score for typical {type} sequences."
+                f" Please inspect further for errors or misclassification."
             )
