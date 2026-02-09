@@ -115,6 +115,7 @@ class ModelRunner:
 
         dl = dataloader(self.batch_size, list(tokenised_seqs.values()))
 
+        # The best solution to avoid slowing down the code was one if else here.
         if self.return_logits:
             numbering = dict(zip(tokenised_seqs, self._predict_numbering_logits(dl)))
         else:
@@ -610,7 +611,7 @@ class ModelRunner:
 
     def _predict_numbering_logits(self, dl):
         """
-        AS ABOVE - WITH LOGITS
+        AS ABOVE - with logits being added to the dictionary
         """
         if self.verbose:
             print(f"Making predictions on {len(dl)} batches.")
@@ -684,6 +685,8 @@ class ModelRunner:
                     & (max_input != sos_token)
                 )
 
+                ### LOGIT MASK - as above but include logit values of X
+                # This allows users to see instertion values.
                 mask2 = (
                     (max_input != skip_token)
                     # & (max_input != x_token) # Keep X tokens for logit return
@@ -732,13 +735,13 @@ class ModelRunner:
                     ]
                     valid_scores = scores[batch_no, valid_indices]
 
+                    ### NEW LOGIT EXTRACTION FOR ALL positions ###
                     all_indices = torch.arange(eos_position, device=self.device)[
                         mask2[batch_no, :eos_position]
                     ]
                     all_scores = scores[batch_no, all_indices]
 
                     ### 5A   Check score is valid
-
                     if len(valid_indices) >= 50:
                         normalized_score = valid_scores.mean().item()
                     else:
