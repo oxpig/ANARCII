@@ -1,0 +1,45 @@
+name: Weekly pre-commit autoupdate
+
+on:
+    schedule:
+        # Every Sunday at 03:42 UTC
+        - cron: "42 3 * * 0"
+    workflow_dispatch: {}
+
+permissions:
+    contents: write
+    pull-requests: write
+
+jobs:
+    autoupdate:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v6
+
+            - name: Set up UV
+              uses: astral-sh/setup-uv@v7
+
+            - name: Run pre-commit autoupdate
+              run: uvx pre-commit autoupdate
+
+            - name: Create pull request
+              uses: peter-evans/create-pull-request@v8
+              with:
+                  commit-message: "chore: pre-commit autoupdate"
+                  title: "Bump pre-commit hooks"
+                  body: |
+                      Bumps [pre-commit](https://pre-commit.com) hook versions using `pre-commit autoupdate`.
+
+                      This PR was created automatically.
+
+                      To reproduce locally:
+                      ```bash
+                      pre-commit autoupdate
+                      ```
+                  branch: dependencies/pre-commit-autoupdate
+                  delete-branch: true
+                  labels: |
+                      dependencies
+                      pre-commit
