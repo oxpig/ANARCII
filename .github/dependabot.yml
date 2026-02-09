@@ -7,10 +7,18 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      # Check for updates to GitHub Actions every week
+      # Check for updates to GitHub Actions every week.
       interval: "weekly"
 
-  - package-ecosystem: "pip" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  # Enable version updates for UV.
+  - package-ecosystem: "uv"
+    # Look for `uv.lock` in the root directory.
+    directory: "/"
+    # Check PyPI once a week.
     schedule:
       interval: "weekly"
+    # Group UV package updates together.
+    groups:
+      python-packages:
+        patterns:
+          - "*"
