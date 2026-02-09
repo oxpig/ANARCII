@@ -527,7 +527,26 @@ def write_pdbx_file(
                 f.write(document.as_json(mmjson=True))
 
 
-def print_low_score(last_numbered_output, type, mode):
+def print_low_score(
+    last_numbered_output: dict,
+    sequence_type: str,
+    mode: str,
+) -> None:
+    """
+    Print warnings for sequences whose scores fall below expected ranges.
+
+    This function compares per-sequence scores against predefined warning
+    and failure thresholds for a given sequence type and mode (e.g. accuracy
+    or speed). If a score is above the failure threshold but at or below the
+    warning threshold, a warning message is printed to stdout.
+
+    Although last_numbered_output can be a path with serialised output.
+    This is prevented by the if statement, so only a dictionary is taken.
+
+    Working out how to run these print statements in serialse mode is not a
+    priority atm, but may be useful in the future.
+    """
+
     warning_thresholds = {
         "antibody_accuracy": 25,
         "antibody_speed": 22.5,
@@ -545,12 +564,15 @@ def print_low_score(last_numbered_output, type, mode):
         "shark_speed": 24,
     }
 
-    warning_threshold = warning_thresholds[type + "_" + mode]
-    fail_threshold = fail_thresholds[type + "_" + mode]
+    key = f"{sequence_type}_{mode}"
+    warning_threshold = warning_thresholds[key]
+    fail_threshold = fail_thresholds[key]
 
-    for k, v in last_numbered_output.items():
-        if fail_threshold < v["score"] <= warning_threshold:
+    for name, result in last_numbered_output.items():
+        score = result["score"]
+        if fail_threshold < score <= warning_threshold:
             print(
-                f"{k} has lower than expected score for typical {type} sequences."
-                f" Please inspect further for errors or misclassification."
+                f"{name} has lower than expected score for typical "
+                f"{sequence_type} sequences. Please inspect further for "
+                f"errors or misclassification."
             )
