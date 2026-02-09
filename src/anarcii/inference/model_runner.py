@@ -740,6 +740,7 @@ class ModelRunner:
                         mask2[batch_no, :eos_position]
                     ]
                     all_scores = scores[batch_no, all_indices]
+                    ###
 
                     ### 5A   Check score is valid
                     if len(valid_indices) >= 50:

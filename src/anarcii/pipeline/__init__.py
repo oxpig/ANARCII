@@ -101,7 +101,7 @@ class Anarcii:
         verbose: bool = False,
         max_seqs_len=1024 * 100,
         low_score_warn=False,
-        return_logits=False,
+        return_logits: bool = False,
     ):
         self.seq_type = seq_type.lower()
 
