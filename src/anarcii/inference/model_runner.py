@@ -45,12 +45,13 @@ class ModelRunner:
 
     """
 
-    def __init__(self, sequence_type, mode, batch_size, device, verbose):
+    def __init__(self, sequence_type, mode, batch_size, device, verbose, ncpu):
         self.type = sequence_type.lower()
         self.mode = mode.lower()
         self.batch_size = batch_size
         self.device = device
         self.verbose = verbose
+        self.ncpu = ncpu
         self.cut_off = CUTOFF_SCORE
 
         if self.type == "antibody":
@@ -112,7 +113,7 @@ class ModelRunner:
 
         # NB: Provide a list of recommended batch sizes based on RAM and architecture
 
-        dl = dataloader(self.batch_size, list(tokenised_seqs.values()))
+        dl = dataloader(self.batch_size, list(tokenised_seqs.values()), self.ncpu)
         numbering = dict(zip(tokenised_seqs, self._predict_numbering(dl)))
 
         # Add offsets, where necessary.

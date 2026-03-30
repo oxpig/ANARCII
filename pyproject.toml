@@ -27,6 +27,7 @@ anarcii = "anarcii.cli:main"
 addopts = ["--import-mode=importlib"]
 
 [tool.ruff]
+ignore = ["B905"]
 src = ["src", "tests"]
 line-length = 88
 lint.select = [

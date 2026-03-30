@@ -92,9 +92,10 @@ class TypeLoader:
 
 
 class Classifii:
-    def __init__(self, batch_size, device):
+    def __init__(self, batch_size, device, ncpu):
         self.batch_size = batch_size
         self.device = device
+        self.ncpu = ncpu
         self.aa = TypeTokeniser("protein")
         self.num = TypeTokeniser("number")
         self.model = TypeLoader(self.device).model
@@ -112,7 +113,7 @@ class Classifii:
                 )
                 tokenized_seqs.append(torch.from_numpy(self.aa.encode(["F"])))
 
-        dl = dataloader(self.batch_size, tokenized_seqs)
+        dl = dataloader(self.batch_size, tokenized_seqs, self.ncpu)
         classes = self._classify(dl)
 
         grouped_sequences = {type_tokens[key]: {} for key in set(classes)}

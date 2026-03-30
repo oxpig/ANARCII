@@ -14,11 +14,12 @@ def first_index_above_threshold(preds, threshold=25):
 
 
 class WindowFinder:
-    def __init__(self, sequence_type, mode, batch_size, device):
+    def __init__(self, sequence_type, mode, batch_size, device, ncpu):
         self.type = sequence_type.lower()
         self.mode = mode.lower()
         self.batch_size = batch_size
         self.device = device
+        self.ncpu = ncpu
 
         if self.type in ["antibody", "shark"]:
             self.sequence_tokeniser = NumberingTokeniser("protein_antibody")
@@ -42,7 +43,7 @@ class WindowFinder:
 
         list_of_seqs: Sequences from whi, pdb_out_stem="blah"
         """
-        dl = dataloader(self.batch_size, list_of_seqs)
+        dl = dataloader(self.batch_size, list_of_seqs, self.ncpu)
         preds = []
         with torch.no_grad():
             for X in dl:
