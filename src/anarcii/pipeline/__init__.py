@@ -100,6 +100,7 @@ class Anarcii:
         ncpu: int = -1,
         verbose: bool = False,
         max_seqs_len=1024 * 100,
+        low_score_warn=False,
     ):
         self.seq_type = seq_type.lower()
 
@@ -112,6 +113,7 @@ class Anarcii:
         self.verbose = verbose
         self.cpu = cpu
         self.max_seqs_len = max_seqs_len
+        self.low_score_warn = low_score_warn
 
         self._last_numbered_output: dict | Path | None = None
         # Has a conversion to a new number scheme occured?
@@ -262,6 +264,11 @@ class Anarcii:
         # If our sequences came from a PDBx or PDB file, write a renumbered version.
         if structure:
             write_pdbx_file(structure, stem=pdb_out_stem)
+
+        # Warn the user when a sequence falls below ~3SD from medians identified.
+        # This will not work in serialise mode.
+        if self.low_score_warn and not serialise:
+            print_low_score(self._last_numbered_output, self.seq_type, self.mode)
 
         return self._last_numbered_output
 
@@ -518,3 +525,54 @@ def write_pdbx_file(
         elif structure.input_format is gemmi.CoorFormat.Mmjson:
             with open(f"{stem}.json", "w") as f:
                 f.write(document.as_json(mmjson=True))
+
+
+def print_low_score(
+    last_numbered_output: dict,
+    sequence_type: str,
+    mode: str,
+) -> None:
+    """
+    Print warnings for sequences whose scores fall below expected ranges.
+
+    This function compares per-sequence scores against predefined warning
+    and failure thresholds for a given sequence type and mode (e.g. accuracy
+    or speed). If a score is above the failure threshold but at or below the
+    warning threshold, a warning message is printed to stdout.
+
+    Although last_numbered_output can be a path with serialised output.
+    This is prevented by the if statement, so only a dictionary is taken.
+
+    Working out how to run these print statements in serialse mode is not a
+    priority atm, but may be useful in the future.
+    """
+
+    warning_thresholds = {
+        "antibody_accuracy": 25,
+        "antibody_speed": 22.5,
+        "tcr_accuracy": 32.5,
+        "tcr_speed": 32.5,
+        "shark_accuracy": 24.5,
+        "shark_speed": 24.5,
+    }
+    fail_thresholds = {
+        "antibody_accuracy": 15,
+        "antibody_speed": 15,
+        "tcr_accuracy": 25,
+        "tcr_speed": 25,
+        "shark_accuracy": 24,
+        "shark_speed": 24,
+    }
+
+    key = f"{sequence_type}_{mode}"
+    warning_threshold = warning_thresholds[key]
+    fail_threshold = fail_thresholds[key]
+
+    for name, result in last_numbered_output.items():
+        score = result["score"]
+        if fail_threshold < score <= warning_threshold:
+            print(
+                f"{name} has lower than expected score for typical "
+                f"{sequence_type} sequences. Please inspect further for "
+                f"errors or misclassification."
+            )
