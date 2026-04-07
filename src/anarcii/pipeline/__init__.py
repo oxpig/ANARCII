@@ -168,7 +168,9 @@ class Anarcii:
             begin = time.time()
 
         if self.seq_type == "unknown":
-            classifii_seqs = Classifii(batch_size=self.batch_size, device=self.device)
+            classifii_seqs = Classifii(
+                batch_size=self.batch_size, device=self.device, ncpu=self.ncpu
+            )
 
         # If there is more than one chunk, we will need to serialise the output.
         if serialise := n_seqs > self.max_seqs_len:
@@ -398,9 +400,11 @@ class Anarcii:
 
     def number_with_type(self, seqs: dict[str, str], seq_type, scfv):
         model = ModelRunner(
-            seq_type, self.mode, self.batch_size, self.device, self.verbose
+            seq_type, self.mode, self.batch_size, self.device, self.verbose, self.ncpu
         )
-        window_model = WindowFinder(seq_type, self.mode, self.batch_size, self.device)
+        window_model = WindowFinder(
+            seq_type, self.mode, self.batch_size, self.device, self.ncpu
+        )
 
         processor = SequenceProcessor(seqs, model, window_model, scfv, self.verbose)
         tokenised_seqs, offsets = processor.process_sequences()

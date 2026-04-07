@@ -28,7 +28,7 @@ def collate_fn(batch):
     return pad_sequence(batch, batch_first=True, padding_value=0)
 
 
-def dataloader(batch_size, tokenised_seqs):
+def dataloader(batch_size, tokenised_seqs, ncpu):
     """
     Returns a DataLoader that batches sequences dynamically.
 
@@ -39,7 +39,9 @@ def dataloader(batch_size, tokenised_seqs):
     Returns:
     - DataLoader: Batches of shape [batch_size, max_seq_len].
     """
-    return DataLoader(tokenised_seqs, batch_size=batch_size, collate_fn=collate_fn)
+    return DataLoader(
+        tokenised_seqs, batch_size=batch_size, collate_fn=collate_fn, num_workers=ncpu
+    )
 
 
 def build_inward_list(length: int, start_num: int, end_num: int):
