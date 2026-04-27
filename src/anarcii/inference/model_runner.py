@@ -45,12 +45,13 @@ class ModelRunner:
 
     """
 
-    def __init__(self, sequence_type, mode, batch_size, device, verbose):
+    def __init__(self, sequence_type, mode, batch_size, device, verbose, return_logits):
         self.type = sequence_type.lower()
         self.mode = mode.lower()
         self.batch_size = batch_size
         self.device = device
         self.verbose = verbose
+        self.return_logits = return_logits
         self.cut_off = CUTOFF_SCORE
 
         if self.type == "antibody":
@@ -113,6 +114,7 @@ class ModelRunner:
         # NB: Provide a list of recommended batch sizes based on RAM and architecture
 
         dl = dataloader(self.batch_size, list(tokenised_seqs.values()))
+
         numbering = dict(zip(tokenised_seqs, self._predict_numbering(dl)))
 
         # Add offsets, where necessary.
@@ -213,12 +215,15 @@ class ModelRunner:
                     -1
                 )  # Remove the last dim; shape becomes [batch_size, trg_len]
 
-                mask = (
+                ## Logit mask reveals integers and insertions (X)
+                logit_mask = (
                     (max_input != skip_token)
-                    & (max_input != x_token)
                     & (max_input != pad_token)
                     & (max_input != sos_token)
                 )
+
+                ## Integer mask reveals only integers
+                integer_mask = logit_mask & (max_input != x_token)
 
                 ### 4 Find the predicted end of sequence by model,
                 # find actual end of input
@@ -257,9 +262,16 @@ class ModelRunner:
                     )
 
                     valid_indices = torch.arange(eos_position, device=self.device)[
-                        mask[batch_no, :eos_position]
+                        integer_mask[batch_no, :eos_position]
                     ]
                     valid_scores = scores[batch_no, valid_indices]
+
+                    if self.return_logits:
+                        ### LOGIT EXTRACTION FOR ALL positions ###
+                        all_indices = torch.arange(eos_position, device=self.device)[
+                            logit_mask[batch_no, :eos_position]
+                        ]
+                        all_scores = scores[batch_no, all_indices]
 
                     ### 5A   Check score is valid
 
@@ -270,17 +282,21 @@ class ModelRunner:
                         error_msg = "Less than 50 non insertion residues numbered."
 
                     if normalized_score < self.cut_off:
-                        numbering.append(
-                            {
-                                "numbering": None,
-                                "chain_type": "F",
-                                "score": normalized_score,
-                                "query_start": None,
-                                "query_end": None,
-                                "error": error_msg or "Score less than cut off.",
-                                "scheme": "imgt",
-                            }
-                        )
+                        results_dict = {
+                            "numbering": None,
+                            "chain_type": "F",
+                            "score": normalized_score,
+                            "query_start": None,
+                            "query_end": None,
+                            "error": error_msg or "Score less than cut off.",
+                            "scheme": "imgt",
+                        }
+
+                        if self.return_logits:
+                            results_dict["logits"] = all_scores
+
+                        numbering.append(results_dict)
+
                         # skip the rest of the loop.
                         continue
 
@@ -366,19 +382,24 @@ class ModelRunner:
                             except ValueError as e:
                                 # Capture the error message from the exception
                                 captured_error = str(e)
-                                numbering.append(
-                                    {
-                                        "numbering": None,
-                                        "chain_type": "F",
-                                        "score": normalized_score,
-                                        "query_start": None,
-                                        "query_end": None,
-                                        "error": "Could not apply numbering: "
-                                        f"{captured_error}",
-                                        "scheme": "imgt",
-                                    }
-                                )
+
+                                results_dict = {
+                                    "numbering": None,
+                                    "chain_type": "F",
+                                    "score": normalized_score,
+                                    "query_start": None,
+                                    "query_end": None,
+                                    "error": "Could not apply numbering: "
+                                    f"{captured_error}",
+                                    "scheme": "imgt",
+                                }
+
+                                if self.return_logits:
+                                    results_dict["logits"] = all_scores
+
+                                numbering.append(results_dict)
                                 error_occurred = True
+
                                 break
 
                         ###      No conditions have been found - it is a number label,
@@ -391,19 +412,25 @@ class ModelRunner:
                             except ValueError as e:
                                 # Capture the error message from the exception
                                 captured_error = str(e)
-                                numbering.append(
-                                    {
-                                        "numbering": None,
-                                        "chain_type": "F",
-                                        "score": normalized_score,
-                                        "query_start": None,
-                                        "query_end": None,
-                                        "error": "Could not apply numbering: "
-                                        f"{captured_error}",
-                                        "scheme": "imgt",
-                                    }
-                                )
+
+                                results_dict = {
+                                    "numbering": None,
+                                    "chain_type": "F",
+                                    "score": normalized_score,
+                                    "query_start": None,
+                                    "query_end": None,
+                                    "error": "Could not apply numbering: "
+                                    f"{captured_error}",
+                                    "scheme": "imgt",
+                                }
+
+                                if self.return_logits:
+                                    results_dict["logits"] = all_scores
+
+                                numbering.append(results_dict)
+
                                 error_occurred = True
+
                                 break
 
                         ###      After each iteration through the sequence append the
@@ -427,17 +454,21 @@ class ModelRunner:
 
                     ## Check for duplicates
                     if len(nums) != len(set(nums)):
-                        numbering.append(
-                            {
-                                "numbering": None,
-                                "chain_type": "F",
-                                "score": normalized_score,
-                                "query_start": None,
-                                "query_end": None,
-                                "error": "Model predicted duplicate numbers",
-                                "scheme": "imgt",
-                            }
-                        )
+                        results_dict = {
+                            "numbering": None,
+                            "chain_type": "F",
+                            "score": normalized_score,
+                            "query_start": None,
+                            "query_end": None,
+                            "error": "Model predicted duplicate numbers",
+                            "scheme": "imgt",
+                        }
+
+                        if self.return_logits:
+                            results_dict["logits"] = all_scores
+
+                        numbering.append(results_dict)
+
                         # break out of the loop
                         continue
 
@@ -535,17 +566,22 @@ class ModelRunner:
                         # an X token. End the loop here and move on to the next seq
                         # in the batch.
                         captured_error = str(e)
-                        numbering.append(
-                            {
-                                "numbering": None,
-                                "chain_type": "F",
-                                "score": normalized_score,
-                                "query_start": None,
-                                "query_end": None,
-                                "error": f"Could not apply numbering: {captured_error}",
-                                "scheme": "imgt",
-                            }
-                        )
+
+                        results_dict = {
+                            "numbering": None,
+                            "chain_type": "F",
+                            "score": normalized_score,
+                            "query_start": None,
+                            "query_end": None,
+                            "error": f"Could not apply numbering: {captured_error}",
+                            "scheme": "imgt",
+                        }
+
+                        if self.return_logits:
+                            results_dict["logits"] = all_scores
+
+                        numbering.append(results_dict)
+
                         continue
 
                     # Should not do this before 10 in case of failure to
@@ -587,18 +623,20 @@ class ModelRunner:
                         residues.append("-")
 
                     ### 6 Populate the meta data dict and append to alignment list
-
                     # Successful - append.
-                    numbering.append(
-                        {
-                            "numbering": list(zip(nums, residues)),
-                            "chain_type": str(pred_tokens[batch_no, 1]),
-                            "score": normalized_score,
-                            "query_start": start_index,
-                            "query_end": end_index,
-                            "error": None,
-                            "scheme": "imgt",
-                        }
-                    )
+                    results_dict = {
+                        "numbering": list(zip(nums, residues)),
+                        "chain_type": str(pred_tokens[batch_no, 1]),
+                        "score": normalized_score,
+                        "query_start": start_index,
+                        "query_end": end_index,
+                        "error": None,
+                        "scheme": "imgt",
+                    }
+
+                    if self.return_logits:
+                        results_dict["logits"] = all_scores
+
+                    numbering.append(results_dict)
 
             return numbering

@@ -101,6 +101,7 @@ class Anarcii:
         verbose: bool = False,
         max_seqs_len=1024 * 100,
         low_score_warn=False,
+        return_logits: bool = False,
     ):
         self.seq_type = seq_type.lower()
 
@@ -114,6 +115,7 @@ class Anarcii:
         self.cpu = cpu
         self.max_seqs_len = max_seqs_len
         self.low_score_warn = low_score_warn
+        self.return_logits = return_logits
 
         self._last_numbered_output: dict | Path | None = None
         # Has a conversion to a new number scheme occured?
@@ -398,7 +400,12 @@ class Anarcii:
 
     def number_with_type(self, seqs: dict[str, str], seq_type, scfv):
         model = ModelRunner(
-            seq_type, self.mode, self.batch_size, self.device, self.verbose
+            seq_type,
+            self.mode,
+            self.batch_size,
+            self.device,
+            self.verbose,
+            self.return_logits,
         )
         window_model = WindowFinder(seq_type, self.mode, self.batch_size, self.device)
 
