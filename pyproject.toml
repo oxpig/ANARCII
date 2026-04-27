@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "anarcii"
-version = "2.0.5"
+version = "2.0.6"
 description = "A language model suite for numbering antigen receptor sequences."
 readme = "README.md"
 license-files = ["LICENCE"]
