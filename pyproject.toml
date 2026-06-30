@@ -66,3 +66,10 @@ commit_args = ""
 setup_hooks = []
 pre_commit_hooks = []
 post_commit_hooks = []
+
+[dependency-groups]
+dev = [
+    "bump-my-version>=1.4.1",
+    "pre-commit>=4.6.0",
+    "pytest>=9.1.1",
+]
