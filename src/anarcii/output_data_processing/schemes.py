@@ -24,7 +24,6 @@ def convert_number_scheme(numbered_seqs_dict, scheme):
 
         else:
             # Sequence is a fail - could not be numbered
-            dt["scheme"] = scheme
-            converted_seqs[nm] = dt
+            converted_seqs[nm] = {**dt, "scheme": scheme}
 
     return converted_seqs
