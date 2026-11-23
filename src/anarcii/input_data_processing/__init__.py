@@ -25,9 +25,9 @@ else:
     from typing import Union
 
     Input = Union[
-        Path, str, tuple[str, str], list[Union[str, tuple[str, str]]], dict[str, str]
+        Path, str, tuple[str, str], list[str | tuple[str, str]], dict[str, str]
     ]
-    SequenceDict = dict[Union[str, tuple[int, str]], str]
+    SequenceDict = dict[str | tuple[int, str], str]
     # A TokenisedSequence is a torch.Tensor of dtype np.int32.
     TokenisedSequence = torch.Tensor
 
